@@ -26,9 +26,9 @@ export async function GET() {
     return NextResponse.json({
       activity,
       stats: {
-        activeQuotes: activity.length,
-        siteVisits: activity.filter(a => a.message.toLowerCase().includes("site visit") || a.status === "confirmed").length,
-        serviceRequests: 0 // Placeholder for now unless we have a separate model
+        activeQuotes: activity.filter(a => a.status === "pending" || a.status === "approved").length,
+        siteVisits: activity.filter(a => a.message.toLowerCase().includes("site visit") || a.status === "approved").length,
+        serviceRequests: activity.filter(a => !a.message.toLowerCase().includes("site visit") && a.status !== "approved").length
       }
     });
   } catch (err: any) {

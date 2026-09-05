@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import ProductCard from '@/components/ui/ProductCard';
 import { ChevronRight, Filter, X } from 'lucide-react';
 import Link from 'next/link';
+import PageHeader from '@/components/ui/PageHeader';
 
 function ProductsContent() {
   const searchParams = useSearchParams();
@@ -45,7 +46,7 @@ function ProductsContent() {
     if (activeCategory === 'all') return 'All Categories';
     const cat = categories.find(c => c.id === activeCategory);
     return cat ? cat.label : 'Category';
-  }, [activeCategory]);
+  }, [activeCategory, categories]);
 
   const sportsInCategory = useMemo(() => {
     if (activeCategory === 'all') return [];
@@ -61,13 +62,16 @@ function ProductsContent() {
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
       const productCategorySlug = product.category.toLowerCase().replace(/\s+/g, '-');
-      const matchesCategory = activeCategory === 'all' || product.category === activeCategory || productCategorySlug === activeCategory;
+      const matchesCategory = activeCategory === 'all'
+        || product.category === activeCategory
+        || productCategorySlug === activeCategory
+        || product.category === currentCategoryLabel;
       const matchesSport = activeSport === 'all' || product.shortSpec === activeSport || product.name === activeSport;
-      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             product.description.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesSport && matchesSearch;
     });
-  }, [products, activeCategory, activeSport, searchQuery]);
+  }, [products, activeCategory, activeSport, searchQuery, currentCategoryLabel]);
 
   if (loading) {
     return (
@@ -102,14 +106,26 @@ function ProductsContent() {
           
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <h1 className="text-3xl md:text-4xl font-heading font-black text-ag-text mb-2 tracking-tighter uppercase">
-                {activeSport !== 'all' ? activeSport : (activeCategory === 'all' ? 'Explore Infrastructure' : currentCategoryLabel)}
-              </h1>
-              <p className="text-ag-text-muted max-w-2xl text-sm font-body">
-                {activeCategory === 'all' 
-                  ? "Select a category from the top navigation to explore our premium sports infrastructure solutions." 
-                  : `Discover our range of premium sports infrastructure and equipment tailored for ${currentCategoryLabel.toLowerCase()}.`}
-              </p>
+              {activeCategory === 'all' ? (
+                <PageHeader
+                  page="products"
+                  defaultTag=""
+                  defaultTitle="Explore Infrastructure"
+                  defaultSubtitle="Select a category from the top navigation to explore our premium sports infrastructure solutions."
+                  titleClassName="text-3xl md:text-4xl font-heading font-black text-ag-text mb-2 tracking-tighter uppercase"
+                  wrapperClassName=""
+                  subtitleClassName="text-ag-text-muted max-w-2xl text-sm font-body"
+                />
+              ) : (
+                <>
+                  <h1 className="text-3xl md:text-4xl font-heading font-black text-ag-text mb-2 tracking-tighter uppercase">
+                    {activeSport !== 'all' ? activeSport : currentCategoryLabel}
+                  </h1>
+                  <p className="text-ag-text-muted max-w-2xl text-sm font-body">
+                    {`Discover our range of premium sports infrastructure and equipment tailored for ${currentCategoryLabel.toLowerCase()}.`}
+                  </p>
+                </>
+              )}
             </div>
             
             <button 
@@ -136,13 +152,43 @@ function ProductsContent() {
             </div>
 
             <div className="space-y-10 sticky top-40">
+              {/* Categories - managed in Admin > Navbar & Categories */}
               <div className="space-y-4">
                 <h3 className="font-body font-extrabold text-xs uppercase tracking-widest text-ag-text pb-2 border-b border-ag-border">
-                   {activeCategory === 'all' ? 'All Products' : currentCategoryLabel}
+                  Categories
                 </h3>
-                
-                {activeCategory !== 'all' ? (
-                  <div className="flex flex-col gap-1 mt-4">
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={() => {
+                      router.push('/products');
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`text-left text-sm py-2 px-3 rounded transition-colors ${activeCategory === 'all' ? 'bg-ag-bg-alt text-ag-primary font-bold border-l-2 border-ag-primary' : 'text-ag-text-muted hover:bg-ag-bg-alt/50 hover:text-ag-text'}`}
+                  >
+                    All Products
+                  </button>
+                  {categories.map(cat => (
+                    <button
+                      key={cat.id}
+                      onClick={() => {
+                        router.push(`/products?category=${cat.id}`);
+                        setIsSidebarOpen(false);
+                      }}
+                      className={`text-left text-sm py-2 px-3 rounded transition-colors ${activeCategory === cat.id ? 'bg-ag-bg-alt text-ag-primary font-bold border-l-2 border-ag-primary' : 'text-ag-text-muted hover:bg-ag-bg-alt/50 hover:text-ag-text'}`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sub-categories within the selected category */}
+              {activeCategory !== 'all' && (
+                <div className="space-y-4">
+                  <h3 className="font-body font-extrabold text-xs uppercase tracking-widest text-ag-text pb-2 border-b border-ag-border">
+                    {currentCategoryLabel}
+                  </h3>
+                  <div className="flex flex-col gap-1">
                     <button
                       onClick={() => setActiveSport('all')}
                       className={`text-left text-sm py-2 px-3 rounded transition-colors ${activeSport === 'all' ? 'bg-ag-bg-alt text-ag-primary font-bold border-l-2 border-ag-primary' : 'text-ag-text-muted hover:bg-ag-bg-alt/50 hover:text-ag-text'}`}
@@ -159,12 +205,8 @@ function ProductsContent() {
                       </button>
                     ))}
                   </div>
-                ) : (
-                    <div className="text-sm text-ag-text-muted mt-4">
-                        Please select a category from the top navigation to view our specialized solutions.
-                    </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -189,15 +231,15 @@ function ProductsContent() {
             )}
 
             {/* Header / Search */}
-            <div className="bg-white border border-ag-border p-4 mb-6 flex items-center justify-between">
+            <div className="bg-white border border-ag-border p-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="text-sm text-ag-text-muted font-body">
                 Showing <span className="font-bold text-ag-text">{filteredProducts.length}</span> products
               </div>
               <div className="flex gap-2 relative">
-                  <input 
-                      type="text" 
-                      placeholder="Search within..." 
-                      className="border border-ag-border px-3 py-1.5 text-sm font-body outline-none focus:border-ag-primary w-48 transition-colors"
+                  <input
+                      type="text"
+                      placeholder="Search within..."
+                      className="border border-ag-border px-3 py-1.5 text-sm font-body outline-none focus:border-ag-primary w-full sm:w-48 transition-colors"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -212,8 +254,8 @@ function ProductsContent() {
             {/* Product Grid / Grouped Display */}
             {filteredProducts.length > 0 ? (
               <div className="space-y-16">
-                {activeSport === 'all' ? (
-                  // Grouped by Sub-Category (Sport)
+                {activeSport === 'all' && activeCategory !== 'all' && sportsInCategory.length > 0 ? (
+                  // Grouped by Sub-Category (Sport) - only meaningful within a selected category
                   sportsInCategory.map(sport => {
                     const productsInSport = filteredProducts.filter(p => p.shortSpec === sport || p.name === sport);
                     if (productsInSport.length === 0) return null;

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { MapPin, LayoutGrid, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import PageHeader from "@/components/ui/PageHeader";
 
 export default function ProjectsPage() {
   const [list, setList] = useState<any[]>([]);
@@ -28,15 +29,13 @@ export default function ProjectsPage() {
     <div className="pt-12   bg-ag-bg min-h-screen pb-20"> {/* Removed  as global layout handle this */}
       <div className="container-retail space-y-16">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="space-y-2">
-              <span className="text-ag-primary font-extrabold text-[11px] uppercase tracking-widest">Our Global Footprint</span>
-              <h1 className="font-heading font-extrabold text-3xl md:text-6xl text-ag-text uppercase tracking-tight leading-none">
-                Landmark <span className="text-ag-primary">Installations</span>
-              </h1>
-              <p className="font-body text-ag-text-muted max-w-xl text-lg">
-                Explore our portfolio of 500+ missions delivered across India.
-              </p>
-            </div>
+            <PageHeader
+              page="projects"
+              defaultTag="Our Global Footprint"
+              defaultTitle={<>Landmark <span className="text-ag-primary">Installations</span></>}
+              defaultSubtitle="Explore our portfolio of 500+ missions delivered across India."
+              titleClassName="font-heading font-extrabold text-3xl md:text-6xl text-ag-text uppercase tracking-tight leading-none"
+            />
             <div className="pb-2">
                <span className="text-xs font-bold text-ag-text-muted uppercase tracking-widest border-b-2 border-ag-primary">All Projects</span>
             </div>

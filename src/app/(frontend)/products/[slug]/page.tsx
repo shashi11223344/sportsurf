@@ -166,18 +166,12 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
                      </div>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-4 max-w-md">
-                     <Link 
-                        href={product.ctaLink || "/get-a-quote"} 
-                        className="btn btn-primary flex-1 py-4 text-base shadow-xl shadow-ag-primary/20 justify-center"
+                  <div className="max-w-md">
+                     <Link
+                        href={product.ctaLink || "/quote"}
+                        className="btn btn-primary w-full py-4 text-base shadow-xl shadow-ag-primary/20 justify-center"
                      >
                         {product.ctaText || "Get a Quote"} <LucideIcons.ArrowRight size={18} className="ml-2" />
-                     </Link>
-                     <Link 
-                        href={product.brochureLink || "#"} 
-                        className="btn btn-outline flex-1 py-4 text-base justify-center"
-                     >
-                        {product.brochureText || "Download Brochure"}
                      </Link>
                   </div>
                </div>

@@ -13,7 +13,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   try {
     const { 
       label, order, description, icon, iconSvg, navbarIconUrl, imageUrl, videoUrl, href,
-      heroTag, ctaText, ctaLink, cta2Text, cta2Link, backgroundColor,
+      heroTag, ctaText, ctaLink, cta2Text, cta2Link, backgroundColor, textColor,
       imageUrl2, imageLabel2, imageUrl3, imageLabel3,
       collabTitle, collabSubtitle, collabDescription, collabCtaText, collabCtaLink,
       logoUrl, collabBackgroundColor, collabTextColor
@@ -36,6 +36,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         cta2Text,
         cta2Link,
         backgroundColor,
+        textColor,
         imageUrl2,
         imageLabel2,
         imageUrl3,

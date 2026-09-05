@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Calculator, MapPin, Ruler, FileText, Send, CheckCircle2, Mail, Phone, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import PageHeader from "@/components/ui/PageHeader";
 
 export default function QuotePage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -14,10 +15,28 @@ export default function QuotePage() {
     phone: "",
     city: "",
     surface: "Synthetic Football Turf",
+    surfaceOther: "",
     area: "",
     urgency: "Planning Phase (3+ Months)",
     message: ""
   });
+
+  const PROJECT_CATEGORIES = [
+    "Synthetic Football Turf",
+    "Athletic Running Track",
+    "Multi-Sport Indoor Court",
+    "Tennis/Basketball Acrylic",
+    "Box Cricket / Multi-Utility",
+    "Swimming Pool / Aquatic Facility",
+    "Badminton / Table Tennis Court",
+    "Budget / School Playground Surface",
+    "Sports Academy Infrastructure",
+    "Kids' Play Zone / Soft Play Area",
+    "Adventure / Obstacle Course",
+    "Climbing Wall / Challenge Course",
+    "Talent Scout / Training Facility",
+    "Other",
+  ];
 
   const handleChange = (e: any) => {
     const { name, value } = e.target;
@@ -41,12 +60,12 @@ Additional Details: ${formData.message}
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
           city: formData.city,
-          surface: formData.surface,
+          surface: formData.surface === "Other" ? (formData.surfaceOther || "Other") : formData.surface,
           message: fullMessage
         }),
       });
@@ -69,15 +88,12 @@ Additional Details: ${formData.message}
       <div className="container-retail">
         <div className="max-w-4xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-            <div className="space-y-2">
-              <span className="text-ag-primary font-extrabold text-[11px] uppercase tracking-widest">Precision Estimates</span>
-              <h1 className="font-heading font-extrabold text-4xl md:text-6xl text-ag-text uppercase tracking-tight leading-none">
-                Get a <span className="text-ag-primary">Quote</span>
-              </h1>
-              <p className="font-body text-ag-text-muted max-w-xl text-lg">
-                Receive a detailed technical and commercial proposal for your sports facility.
-              </p>
-            </div>
+            <PageHeader
+              page="quote"
+              defaultTag="Precision Estimates"
+              defaultTitle={<>Get a <span className="text-ag-primary">Quote</span></>}
+              defaultSubtitle="Receive a detailed technical and commercial proposal for your sports facility."
+            />
             <div className="flex items-center gap-3 px-4 py-2 bg-ag-bg-alt border border-ag-border rounded-lg">
                <Calculator size={18} className="text-ag-primary" />
                <span className="text-[10px] font-bold text-ag-text uppercase tracking-widest">Instant Assessment</span>
@@ -104,18 +120,27 @@ Additional Details: ${formData.message}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div className="space-y-2">
                          <label className="font-body font-bold text-ag-text text-[11px] uppercase tracking-widest ml-1">Project Category</label>
-                         <select 
+                         <select
                            name="surface"
                            value={formData.surface}
                            onChange={handleChange}
                            className="w-full bg-ag-bg-alt border border-ag-border rounded-lg py-4 px-6 text-ag-text font-body text-sm focus:outline-none focus:ring-2 focus:ring-ag-primary/10 transition-all appearance-none"
                          >
-                           <option>Synthetic Football Turf</option>
-                           <option>Athletic Running Track</option>
-                           <option>Multi-Sport Indoor Court</option>
-                           <option>Tennis/Basketball Acrylic</option>
-                           <option>Box Cricket / Multi-Utility</option>
+                           {PROJECT_CATEGORIES.map((cat) => (
+                             <option key={cat}>{cat}</option>
+                           ))}
                          </select>
+                         {formData.surface === "Other" && (
+                           <input
+                             required
+                             name="surfaceOther"
+                             type="text"
+                             value={formData.surfaceOther}
+                             onChange={handleChange}
+                             placeholder="Please specify your project category"
+                             className="w-full bg-ag-bg-alt border border-ag-border rounded-lg py-4 px-6 text-ag-text font-body text-sm focus:outline-none focus:ring-2 focus:ring-ag-primary/10 transition-all mt-2"
+                           />
+                         )}
                       </div>
 
                       <div className="space-y-2">

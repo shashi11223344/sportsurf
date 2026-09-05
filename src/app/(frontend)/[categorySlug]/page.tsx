@@ -12,23 +12,23 @@ const slugify = (text: string) => text.toLowerCase().replace(/\s+/g, '-');
 
 // --- PROFESSIONAL MASTER HERO ARCHITECTURES ---
 
-const MasterSplitHero = ({ title, description, baseImage, sports, heroTag, ctaText, ctaLink, cta2Text, cta2Link, videoUrl, backgroundColor }: any) => {
+const MasterSplitHero = ({ title, description, baseImage, sports, heroTag, ctaText, ctaLink, cta2Text, cta2Link, videoUrl, backgroundColor, textColor }: any) => {
   return (
-    <div className="mb-12 flex flex-col md:flex-row h-[350px] md:h-[380px] rounded-3xl overflow-hidden border border-ag-border shadow-sm bg-white">
+    <div className="mb-12 flex flex-col md:flex-row h-auto md:h-[380px] rounded-3xl overflow-hidden border border-ag-border shadow-sm bg-white">
        <div className="w-full md:w-[40%] p-8 flex flex-col justify-center" style={backgroundColor ? { backgroundColor } : { backgroundColor: '#fdfcf9' }}>
           <span className="text-ag-primary font-bold text-[8px] uppercase tracking-[0.4em] mb-3 block">{heroTag || 'Infrastructure'}</span>
-          <h1 className="text-3xl md:text-5xl font-heading font-black text-ag-text uppercase tracking-tighter leading-none mb-4">{title}</h1>
-          <p className="text-ag-text-muted text-[10px] font-body leading-relaxed max-w-xs">{description.substring(0, 100)}...</p>
+          <h1 className="text-3xl md:text-5xl font-heading font-black uppercase tracking-tighter leading-none mb-4" style={textColor ? { color: textColor } : undefined}>{title}</h1>
+          <p className="text-[10px] font-body leading-relaxed max-w-xs" style={textColor ? { color: textColor } : undefined}>{description.substring(0, 100)}...</p>
           <div className="mt-6 flex gap-2">
              <Link href={ctaLink || "#"} className="bg-ag-text text-white px-5 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-ag-primary transition-all flex items-center justify-center">
                 {ctaText || 'View Specs'}
              </Link>
-             <Link href={cta2Link || "/contact"} className="border border-ag-border text-ag-text px-5 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-ag-bg-alt transition-all flex items-center justify-center">
+             <Link href={cta2Link || "/contact"} className="border border-ag-border px-5 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-ag-bg-alt transition-all flex items-center justify-center" style={textColor ? { color: textColor, borderColor: textColor } : undefined}>
                 {cta2Text || 'Talk to Expert'}
              </Link>
           </div>
        </div>
-       <div className="w-full md:w-[60%] relative h-full">
+       <div className="w-full md:w-[60%] relative h-[220px] md:h-full">
           {videoUrl ? (
              <video src={videoUrl} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
           ) : (
@@ -44,9 +44,9 @@ const MasterSplitHero = ({ title, description, baseImage, sports, heroTag, ctaTe
   );
 };
 
-const MasterGalleryHero = ({ title, description, baseImage, heroTag, ctaText, ctaLink, cta2Text, cta2Link, videoUrl, backgroundColor }: any) => {
+const MasterGalleryHero = ({ title, description, baseImage, heroTag, ctaText, ctaLink, cta2Text, cta2Link, videoUrl, backgroundColor, textColor }: any) => {
   return (
-    <div className="mb-12 relative h-[350px] md:h-[380px] rounded-3xl overflow-hidden shadow-md" style={backgroundColor ? { backgroundColor } : {}}>
+    <div className="mb-12 relative h-[480px] md:h-[380px] rounded-3xl overflow-hidden shadow-md" style={backgroundColor ? { backgroundColor } : {}}>
        {videoUrl ? (
           <video src={videoUrl} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
        ) : (
@@ -58,8 +58,8 @@ const MasterGalleryHero = ({ title, description, baseImage, heroTag, ctaText, ct
        </div>
        <div className="absolute bottom-0 left-0 right-0 p-10 flex flex-col md:flex-row items-end justify-between gap-6">
           <div className="max-w-xl text-left">
-             <h1 className="text-4xl md:text-6xl font-heading font-black text-white uppercase tracking-tighter leading-none mb-3">{title}</h1>
-             <p className="text-white/70 text-[11px] font-body max-w-lg leading-relaxed">{description.substring(0, 120)}...</p>
+             <h1 className="text-4xl md:text-6xl font-heading font-black uppercase tracking-tighter leading-none mb-3" style={textColor ? { color: textColor } : { color: '#ffffff' }}>{title}</h1>
+             <p className="text-[11px] font-body max-w-lg leading-relaxed" style={textColor ? { color: textColor, opacity: 0.8 } : { color: 'rgba(255,255,255,0.7)' }}>{description.substring(0, 120)}...</p>
           </div>
           <div className="flex gap-4">
              <Link href={ctaLink || "/contact"} className="bg-white text-ag-text px-8 py-3 rounded-xl font-black uppercase tracking-widest text-[9px] hover:bg-ag-primary hover:text-white transition-all shadow-xl">
@@ -76,14 +76,14 @@ const MasterGalleryHero = ({ title, description, baseImage, heroTag, ctaText, ct
   );
 };
 
-const MasterMinimalHero = ({ title, description, baseImage, sports, heroTag, ctaText, ctaLink, videoUrl, backgroundColor }: any) => {
+const MasterMinimalHero = ({ title, description, baseImage, sports, heroTag, ctaText, ctaLink, videoUrl, backgroundColor, textColor }: any) => {
   return (
-    <div className="mb-12 grid grid-cols-1 md:grid-cols-2 gap-3 h-[350px] md:h-[380px]">
+    <div className="mb-12 grid grid-cols-1 md:grid-cols-2 gap-3 h-[520px] md:h-[380px]">
        <div className="relative rounded-3xl overflow-hidden border border-ag-border flex flex-col justify-center items-center text-center p-8" style={backgroundColor ? { backgroundColor } : { backgroundColor: '#ffffff' }}>
             <span className="text-ag-primary font-bold text-[8px] uppercase tracking-widest mb-4">{heroTag || 'Bespoke Solutions'}</span>
             <div className="w-12 h-px bg-ag-primary mb-6" />
-            <h1 className="text-4xl md:text-5xl font-heading font-black text-ag-text uppercase tracking-tighter leading-none mb-4">{title}</h1>
-            <p className="text-ag-text-muted text-[10px] font-body max-w-sm mb-6 leading-relaxed">{description.substring(0, 120)}...</p>
+            <h1 className="text-4xl md:text-5xl font-heading font-black uppercase tracking-tighter leading-none mb-4" style={textColor ? { color: textColor } : { color: '#0f172a' }}>{title}</h1>
+            <p className="text-[10px] font-body max-w-sm mb-6 leading-relaxed" style={textColor ? { color: textColor, opacity: 0.8 } : { color: '#475569' }}>{description.substring(0, 120)}...</p>
             <Link href={ctaLink || "#"} className="border-b border-ag-primary text-ag-primary font-black uppercase text-[9px] tracking-widest py-1">
                {ctaText || 'Explore Range'}
             </Link>
@@ -100,9 +100,9 @@ const MasterMinimalHero = ({ title, description, baseImage, sports, heroTag, cta
   );
 };
 
-const MasterAdventureHero = ({ title, description, baseImage, sports, heroTag, ctaText, ctaLink, videoUrl, backgroundColor, imageUrl2, imageLabel2, imageUrl3, imageLabel3 }: any) => {
+const MasterAdventureHero = ({ title, description, baseImage, sports, heroTag, ctaText, ctaLink, videoUrl, backgroundColor, textColor, imageUrl2, imageLabel2, imageUrl3, imageLabel3 }: any) => {
   return (
-    <div className="mb-12 grid grid-cols-1 md:grid-cols-12 gap-3 h-[350px] md:h-[380px]">
+    <div className="mb-12 grid grid-cols-1 md:grid-cols-12 gap-3 h-[620px] md:h-[380px]">
        <div className="md:col-span-8 relative rounded-3xl overflow-hidden border border-ag-border group" style={backgroundColor ? { backgroundColor } : {}}>
           {videoUrl ? (
              <video src={videoUrl} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
@@ -110,14 +110,14 @@ const MasterAdventureHero = ({ title, description, baseImage, sports, heroTag, c
              <Image src={baseImage} fill className="object-cover" alt={title} priority />
           )}
           <div className="absolute top-0 left-0 right-0 p-8 flex flex-col justify-start z-10">
-             <div className="bg-white/95 text-ag-text px-6 py-2 w-fit rounded-full flex items-center gap-4 border border-white/20 shadow-xl">
-                 <span className="text-[10px] font-black uppercase tracking-tighter">{title}</span>
+             <div className="bg-white/95 px-6 py-2 w-fit rounded-full flex items-center gap-4 border border-white/20 shadow-xl" style={textColor ? { color: textColor } : { color: '#0f172a' }}>
+                 <span className="text-[10px] font-black uppercase tracking-tighter" style={textColor ? { color: textColor } : { color: '#0f172a' }}>{title}</span>
                  <div className="w-1.5 h-1.5 rounded-full bg-ag-primary animate-pulse" />
-                 <span className="text-[9px] font-bold text-ag-text-muted uppercase tracking-widest">Active Solutions</span>
+                 <span className="text-[9px] font-bold uppercase tracking-widest" style={textColor ? { color: textColor, opacity: 0.7 } : { color: '#475569' }}>Active Solutions</span>
              </div>
           </div>
           <div className="absolute bottom-0 left-0 right-0 p-8">
-              <p className="bg-black/60 backdrop-blur-md text-white text-[10px] p-4 rounded-xl border border-white/10 max-w-sm">{description.substring(0, 100)}...</p>
+              <p className="bg-black/60 backdrop-blur-md text-[10px] p-4 rounded-xl border border-white/10 max-w-sm" style={textColor ? { color: textColor } : { color: '#ffffff' }}>{description.substring(0, 100)}...</p>
           </div>
        </div>
        <div className="md:col-span-4 grid grid-rows-2 gap-3 h-full">
@@ -137,21 +137,22 @@ const MasterAdventureHero = ({ title, description, baseImage, sports, heroTag, c
   );
 };
 
-const MasterRosterHero = ({ title, description, baseImage, sports, heroTag, videoUrl, backgroundColor }: any) => {
+const MasterRosterHero = ({ title, description, baseImage, sports, heroTag, videoUrl, backgroundColor, textColor }: any) => {
+  const effectiveTextColor = textColor || '#ffffff';
   return (
-    <div className="mb-12 flex flex-col md:flex-row gap-3 h-[350px] md:h-[380px]">
-       <div className="flex-1 relative rounded-3xl overflow-hidden border border-ag-border text-white p-10 flex flex-col justify-end" style={backgroundColor ? { backgroundColor } : { backgroundColor: '#0f172a' }}>
+    <div className="mb-12 flex flex-col md:flex-row gap-3 h-auto md:h-[380px]">
+       <div className="flex-1 relative rounded-3xl overflow-hidden border border-ag-border p-10 flex flex-col justify-end min-h-[280px]" style={backgroundColor ? { backgroundColor } : { backgroundColor: '#0f172a' }}>
           {videoUrl && <video src={videoUrl} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-60" />}
           <div className="absolute top-0 right-0 p-10 z-10">
              <div className="w-16 h-16 border-2 border-ag-primary rounded-full flex items-center justify-center text-ag-primary text-2xl font-black">2024</div>
           </div>
-          <div className="relative z-10">
+          <div className="relative z-10" style={{ color: effectiveTextColor }}>
              <span className="text-ag-primary font-bold text-[9px] uppercase tracking-[0.3em] mb-4 block">Elite Training Division</span>
-             <h1 className="text-4xl md:text-6xl font-heading font-black uppercase tracking-tighter leading-none mb-6 underline decoration-ag-primary decoration-4 underline-offset-8">{title}</h1>
-             <p className="text-white/60 text-xs font-body max-w-sm">{description.substring(0, 100)}...</p>
+             <h1 className="text-4xl md:text-6xl font-heading font-black uppercase tracking-tighter leading-none mb-6 underline decoration-ag-primary decoration-4 underline-offset-8" style={{ color: effectiveTextColor }}>{title}</h1>
+             <p className="text-xs font-body max-w-sm" style={{ color: effectiveTextColor, opacity: 0.7 }}>{description.substring(0, 100)}...</p>
           </div>
        </div>
-       <div className="w-full md:w-[40%] relative rounded-3xl overflow-hidden border border-ag-border shadow-xl">
+       <div className="w-full md:w-[40%] relative rounded-3xl overflow-hidden border border-ag-border shadow-xl h-[220px] md:h-auto">
           <Image src={baseImage} fill className="object-cover" alt="Elite" priority />
           <div className="absolute bottom-0 left-0 right-0 bg-white p-6 border-t border-ag-border flex items-center justify-between z-10">
               <div className="flex flex-col">
@@ -201,7 +202,7 @@ const CollabBlocks = ({ category, collaborations = [] }: { category: any; collab
                 <p className="text-[11px] font-body mb-5 leading-relaxed max-w-[200px]" style={{ color: category?.collabTextColor || '#ffffff', opacity: 0.6 }}>
                     {category?.collabDescription || 'We are looking for strategic partners in infrastructure and technology.'}
                 </p>
-                <Link href={category?.collabCtaLink || '/contact'} className="inline-flex items-center gap-2 bg-ag-gold text-white px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-ag-text transition-all">
+                <Link href={category?.collabCtaLink || '/partner'} className="inline-flex items-center gap-2 bg-ag-gold text-white px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-ag-text transition-all">
                     {category?.collabCtaText || 'Apply Now'} <ArrowRight size={12} />
                 </Link>
             </div>
@@ -274,7 +275,10 @@ function CategoryContent() {
   }, []);
 
   const currentCategory = useMemo(() => {
-    return allCategories.find(c => slugify(c.label) === categorySlug || c.id === categorySlug);
+    return allCategories.find(c => {
+      const categoryPath = (c.href || "").replace(/^\//, "").toLowerCase();
+      return slugify(c.label) === categorySlug || c.id === categorySlug || categoryPath === categorySlug;
+    });
   }, [allCategories, categorySlug]);
 
   const currentCategoryLabel = currentCategory ? currentCategory.label : categorySlug.replace(/-/g, ' ');
@@ -380,6 +384,7 @@ function CategoryContent() {
             cta2Link={currentCategory?.cta2Link}
             videoUrl={currentCategory?.videoUrl}
             backgroundColor={currentCategory?.backgroundColor}
+            textColor={currentCategory?.textColor || '#0f172a'}
           />
         )}
         {heroStyle === 'gallery' && (
@@ -394,6 +399,7 @@ function CategoryContent() {
             cta2Link={currentCategory?.cta2Link}
             videoUrl={currentCategory?.videoUrl}
             backgroundColor={currentCategory?.backgroundColor}
+            textColor={currentCategory?.textColor || '#0f172a'}
           />
         )}
         {heroStyle === 'minimal' && (
@@ -407,6 +413,7 @@ function CategoryContent() {
             ctaLink={currentCategory?.ctaLink}
             videoUrl={currentCategory?.videoUrl}
             backgroundColor={currentCategory?.backgroundColor}
+            textColor={currentCategory?.textColor || '#0f172a'}
           />
         )}
         {heroStyle === 'adventure' && (
@@ -418,6 +425,7 @@ function CategoryContent() {
             heroTag={currentCategory?.heroTag}
             videoUrl={currentCategory?.videoUrl}
             backgroundColor={currentCategory?.backgroundColor}
+            textColor={currentCategory?.textColor || '#0f172a'}
             imageUrl2={currentCategory?.imageUrl2}
             imageLabel2={currentCategory?.imageLabel2}
             imageUrl3={currentCategory?.imageUrl3}
@@ -433,6 +441,7 @@ function CategoryContent() {
             heroTag={currentCategory?.heroTag}
             videoUrl={currentCategory?.videoUrl}
             backgroundColor={currentCategory?.backgroundColor}
+            textColor={currentCategory?.textColor || '#ffffff'}
           />
         )}
 

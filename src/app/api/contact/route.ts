@@ -3,6 +3,8 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import nodemailer from "nodemailer";
+import { cookies } from "next/headers";
+import { verifyAdminToken } from "@/lib/admin-auth";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -84,6 +86,31 @@ export async function GET() {
     return NextResponse.json(submissions);
   } catch (err: any) {
     return new NextResponse(err.message || "Error fetching", { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request) {
+  const token = (await cookies()).get("admin_token")?.value;
+  if (!token || !verifyAdminToken(token)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { id, status } = await req.json();
+    const allowedStatuses = ["pending", "approved", "completed", "rejected"];
+
+    if (!id || !allowedStatuses.includes(status)) {
+      return NextResponse.json({ error: "A valid request ID and status are required" }, { status: 400 });
+    }
+
+    const request = await prisma.contactRequest.update({
+      where: { id },
+      data: { status },
+    });
+
+    return NextResponse.json(request);
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || "Unable to update request" }, { status: 500 });
   }
 }
 

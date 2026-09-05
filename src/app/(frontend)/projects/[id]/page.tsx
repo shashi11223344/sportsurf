@@ -1,20 +1,40 @@
 "use client";
 
-import { projects } from "@/data/projects";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { MapPin, Calendar, LayoutGrid, CheckCircle2, ArrowLeft, Share2, ClipboardList } from "lucide-react";
 import Link from "next/link";
-import { Section } from "@/components/ui/Section";
 
 export default function ProjectDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  
-  const project = projects.find(p => p.id === id);
+  const [project, setProject] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+
+    fetch("/api/admin/projects")
+      .then((res) => res.json())
+      .then((data) => {
+        const found = Array.isArray(data) ? data.find((item) => item.id === id) : null;
+        setProject(found || null);
+      })
+      .catch(() => setProject(null))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="pt-12 min-h-screen bg-ag-bg flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-ag-primary border-t-transparent animate-spin"></div>
+      </div>
+    );
+  }
 
   if (!project) {
     return (
-      <div className="pt-12     min-h-screen  flex flex-col items-center justify-center space-y-4">
+      <div className="pt-12 min-h-screen flex flex-col items-center justify-center space-y-4 bg-ag-bg">
         <h1 className="text-2xl font-bold">Project Not Found</h1>
         <Link href="/projects" className="text-ag-primary hover:underline">Back to Projects</Link>
       </div>
@@ -22,7 +42,7 @@ export default function ProjectDetailPage() {
   }
 
   return (
-    <div className="pt-12   bg-ag-bg min-h-screen  pb-20">
+    <div className="pt-12 bg-ag-bg min-h-screen pb-20">
       <div className="container-retail">
         <button 
           onClick={() => router.back()}
@@ -33,7 +53,6 @@ export default function ProjectDetailPage() {
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
-          {/* Main Info */}
           <div className="lg:col-span-2 space-y-12">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
@@ -55,11 +74,14 @@ export default function ProjectDetailPage() {
               </div>
             </div>
 
-            {/* Main Visual Placeholder */}
             <div className="aspect-video bg-ag-bg-alt border border-ag-border rounded-3xl relative overflow-hidden flex items-center justify-center">
-               <div className="text-ag-text-muted/10 font-heading font-black text-9xl italic uppercase select-none">
-                  {project.surface.split(' ')[0]}
-               </div>
+               {project.imageUrl ? (
+                 <img src={project.imageUrl} alt={project.name} className="w-full h-full object-cover" />
+               ) : (
+                 <div className="text-ag-text-muted/10 font-heading font-black text-9xl italic uppercase select-none">
+                    {project.surface?.split(' ')[0] || 'P'}
+                 </div>
+               )}
                <div className="absolute inset-0 bg-gradient-to-t from-ag-bg/80 to-transparent" />
                <div className="absolute bottom-8 left-8 right-8 flex justify-between items-end">
                   <div className="space-y-1">
@@ -94,7 +116,6 @@ export default function ProjectDetailPage() {
             </div>
           </div>
 
-          {/* Sidebar */}
           <div className="lg:col-span-1 space-y-8">
              <div className="retail-card p-8 bg-ag-bg-alt border-ag-primary/20">
                 <h3 className="font-heading font-black text-ag-text text-xl uppercase tracking-tighter mb-6">Expertise Applied</h3>
@@ -105,7 +126,7 @@ export default function ProjectDetailPage() {
                       </div>
                       <div>
                          <p className="text-[10px] font-bold text-ag-text-muted uppercase tracking-widest leading-none mb-1">Duration</p>
-                         <p className="text-sm font-bold text-ag-text">45 Days to Handover</p>
+                         <p className="text-sm font-bold text-ag-text">{project.duration || "45 Days to Handover"}</p>
                       </div>
                    </div>
                    <div className="flex gap-4">
@@ -114,7 +135,7 @@ export default function ProjectDetailPage() {
                       </div>
                       <div>
                          <p className="text-[10px] font-bold text-ag-text-muted uppercase tracking-widest leading-none mb-1">Standard</p>
-                         <p className="text-sm font-bold text-ag-text">International Pro Grade</p>
+                         <p className="text-sm font-bold text-ag-text">{project.standard || "International Pro Grade"}</p>
                       </div>
                    </div>
                 </div>

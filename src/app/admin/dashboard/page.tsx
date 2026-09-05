@@ -1,12 +1,12 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   LayoutDashboard, Package, Briefcase, Star, Users, Settings,
   Map, Image as ImageIcon, LogOut, Plus, Pencil, Trash2, X, Save,
   ChevronDown, ChevronUp, ChevronRight, Search, CheckCircle, AlertCircle, Eye,
   Palette, Type, Link2, Megaphone, Shield, Phone, Handshake, Upload,
-  XCircle, Loader2, Globe
+  XCircle, Loader2, Globe, Grid3x3, Mail
 } from "lucide-react";
 
 // ---------- types ----------
@@ -14,6 +14,7 @@ type TabGroup = string;
 type Tab = string;
 
 interface StatsData { userCount: number; productCount: number; projectCount: number; testimonialCount: number }
+interface SitePage { id: string; label: string; slug: string; path: string; status: "published" | "draft"; section: string }
 interface HeroItem { id: string; page: string; title: string; subtitle?: string; imageUrl?: string; videoUrl?: string; logoUrl?: string; heroTag?: string; ctaText?: string; ctaLink?: string; cta2Text?: string; cta2Link?: string; textColor: string; overlayOpacity: number }
 interface NavItem { id: string; label: string; href: string; order: number }
 interface ProductItem { 
@@ -38,15 +39,13 @@ interface ProductItem {
   subCategory?: { id: string; name: string };
   ctaText?: string;
   ctaLink?: string;
-  brochureText?: string;
-  brochureLink?: string;
   warrantyText?: string;
   standardsText?: string;
   specsTitle?: string;
   whyInvestTitle?: string;
 }
 interface SubCategoryItem { id: string; name: string; categoryId: string; order: number; category?: { label: string } }
-interface ProjectItem { id: string; name: string; city: string; state: string; surface: string; area: string; year: string; imageUrl?: string }
+interface ProjectItem { id: string; name: string; city: string; state: string; surface: string; area: string; year: string; duration?: string; standard?: string; imageUrl?: string }
 interface TestimonialItem { id: string; name: string; institution: string; quote: string; avatar?: string }
 interface CategoryItem {
   id: string;
@@ -55,8 +54,10 @@ interface CategoryItem {
   imageUrl?: string;
   iconSvg?: string;
   navbarIconUrl?: string;
+  href?: string;
   description?: string;
   backgroundColor?: string;
+  textColor?: string;
   heroTag?: string;
   videoUrl?: string;
   ctaText?: string;
@@ -77,6 +78,17 @@ interface CategoryItem {
   collabCtaLink?: string;
 }
 interface UserItem { id: string; name?: string; email?: string; role: string; emailVerified?: string }
+interface RequestItem {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  city?: string;
+  surface?: string;
+  message: string;
+  status: string;
+  createdAt: string;
+}
 interface CollaborationItem { 
   id: string; 
   name: string; 
@@ -106,10 +118,21 @@ interface SiteSettings {
   ctaSubtitle?: string; 
   ctaButton?: string; 
   ctaLink?: string;
+  homeHeroTitle?: string;
+  homeHeroSubtitle?: string;
+  homeHeroTag?: string;
+  homeHeroPrimaryButtonText?: string;
+  homeHeroPrimaryButtonLink?: string;
+  homeHeroSecondaryButtonText?: string;
+  homeHeroSecondaryButtonLink?: string;
   // New Page Content Fields
-  aboutText?: string;
   aboutOriginTitle?: string;
   aboutOriginText?: string;
+  aboutImageUrl?: string;
+  privacyIntro?: string;
+  privacySectionsJson?: string;
+  termsIntro?: string;
+  termsSectionsJson?: string;
   valuesJson?: string;
   timelineJson?: string;
   officeHours?: string;
@@ -129,13 +152,36 @@ function slugify(text: string | undefined): string {
 }
 
 const EDITABLE_PAGES = [
-  { label: "Home", slug: "home", icon: "🏠", path: "/home" },
+  { label: "Home", slug: "home", icon: "🏠", path: "/" },
+  { label: "Products", slug: "products", icon: "📦", path: "/products" },
   { label: "Projects", slug: "projects", icon: "🏗️", path: "/projects" },
   { label: "About Us", slug: "about", icon: "ℹ️", path: "/about" },
   { label: "Contact Us", slug: "contact", icon: "📞", path: "/contact" },
   { label: "Registration", slug: "registration", icon: "📝", path: "/register" },
   { label: "Login", slug: "login", icon: "🔑", path: "/login" },
+  { label: "Forgot Password", slug: "forgot-password", icon: "🔒", path: "/forgot-password" },
+  { label: "Privacy Policy", slug: "privacy", icon: "🛡️", path: "/privacy" },
+  { label: "Terms", slug: "terms", icon: "📄", path: "/terms" },
+  { label: "Quote", slug: "quote", icon: "💬", path: "/quote" },
+  { label: "Profile", slug: "profile", icon: "👤", path: "/profile" },
+  { label: "Search", slug: "search", icon: "🔎", path: "/search" },
 ];
+
+// Pages whose headline/subtitle text now reads live from HeroSection (see
+// page_<slug> "Hero Settings" tab). About/Contact/Privacy/Terms use their
+// own dedicated settings fields instead (handled in openPageEditor).
+// Profile and Search show personalized/dynamic content (the logged-in
+// user's name, live search results) so they have nothing static to edit.
+const HERO_EDITABLE_SLUGS = ["home", "products", "projects", "registration", "login", "forgot-password", "quote"];
+
+const basePageManagerEntries: SitePage[] = EDITABLE_PAGES.map((page, index) => ({
+  id: `page-${page.slug}-${index}`,
+  label: page.label,
+  slug: page.slug,
+  path: page.path,
+  status: "published",
+  section: page.slug === "products" ? "catalog" : page.slug === "projects" ? "portfolio" : "content",
+}));
 
 function Toast({ msg, type }: { msg: string; type: "success" | "error" }) {
   return (
@@ -149,12 +195,12 @@ function Toast({ msg, type }: { msg: string; type: "success" | "error" }) {
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4 animate-in fade-in duration-300">
-      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-white/20">
-        <div className="flex items-center justify-between px-8 py-6 border-b border-slate-50">
+      <div className="bg-white rounded-3xl sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-white/20">
+        <div className="flex items-center justify-between px-4 py-4 sm:px-8 sm:py-6 border-b border-slate-50">
           <h3 className="font-black text-slate-800 text-xl tracking-tight">{title}</h3>
           <button onClick={onClose} className="p-2.5 rounded-2xl hover:bg-slate-100 transition-all text-slate-400 hover:text-slate-600"><X size={20} /></button>
         </div>
-        <div className="p-8 overflow-y-auto custom-scrollbar">{children}</div>
+        <div className="p-4 sm:p-8 overflow-y-auto custom-scrollbar">{children}</div>
       </div>
     </div>
   );
@@ -275,10 +321,32 @@ export default function AdminDashboard() {
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [testimonials, setTestimonials] = useState<TestimonialItem[]>([]);
   const [users, setUsers] = useState<UserItem[]>([]);
+  const [requests, setRequests] = useState<RequestItem[]>([]);
+  const [requestView, setRequestView] = useState<"quotes" | "contacts">("quotes");
   const [settings, setSettings] = useState<SiteSettings>({ siteName: "SPORTSURF", primaryColor: "#f59e0b", secondaryColor: "#1e293b", fontHeading: "Inter", fontBody: "Inter" });
   const [collaborations, setCollaborations] = useState<CollaborationItem[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
+  const [pageManagerPages, setPageManagerPages] = useState<SitePage[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("sportsurf-page-manager");
+        if (saved) return JSON.parse(saved) as SitePage[];
+      } catch (error) {
+        console.warn("Could not load saved pages", error);
+      }
+    }
+    return basePageManagerEntries;
+  });
+  const [pageForm, setPageForm] = useState<Partial<SitePage> & Record<string, any>>({
+    label: "",
+    slug: "",
+    path: "",
+    status: "published",
+    section: "content",
+  });
+  const [pageFormMode, setPageFormMode] = useState<"create" | "edit">("create");
+  const [pageFormOpen, setPageFormOpen] = useState(false);
 
   // Modal state
   const [modal, setModal] = useState<{ type: string; data?: any } | null>(null);
@@ -288,7 +356,7 @@ export default function AdminDashboard() {
 
   const showToast = useCallback((msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), type === "error" ? 8000 : 3000);
   }, []);
 
   const fetchData = useCallback(async (endpoint: string) => {
@@ -300,6 +368,38 @@ export default function AdminDashboard() {
     }
     return null;
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("sportsurf-page-manager", JSON.stringify(pageManagerPages));
+    }
+  }, [pageManagerPages]);
+
+  useEffect(() => {
+    if (categories.length > 0) {
+      setPageManagerPages((prev) => {
+        const normalized = categories
+          .map((cat, index) => ({
+            id: `category-page-${cat.id || index}`,
+            label: cat.label,
+            slug: slugify(cat.label),
+            path: `/${slugify(cat.label)}`,
+            status: "published" as const,
+            section: "category",
+          }));
+
+        const merged: SitePage[] = [...prev.filter((page) => !page.section || page.section !== "category"), ...normalized];
+        const uniquePages: SitePage[] = merged.reduce<SitePage[]>((acc, page) => {
+          if (!acc.some((item) => item.slug === page.slug)) {
+            acc.push(page);
+          }
+          return acc;
+        }, []);
+
+        return uniquePages.sort((a, b) => a.label.localeCompare(b.label));
+      });
+    }
+  }, [categories]);
 
   useEffect(() => {
     async function load() {
@@ -325,6 +425,8 @@ export default function AdminDashboard() {
       if (t) setTestimonials(t);
       const u = await fetchData("/api/admin/users");
       if (u) setUsers(u.users || []);
+      const r = await fetchData("/api/contact");
+      if (r) setRequests(r || []);
       const st = await fetchData("/api/admin/settings");
       if (st && st.id) setSettings(st);
       const cl = await fetchData("/api/admin/collaborations");
@@ -473,6 +575,8 @@ export default function AdminDashboard() {
       description: formData.description,
       href: formData.href, 
       order: parseInt(formData.order) || 0,
+      backgroundColor: formData.backgroundColor,
+      textColor: formData.textColor,
       // Include collaboration fields
       collabTitle: formData.collabTitle,
       collabSubtitle: formData.collabSubtitle,
@@ -577,6 +681,27 @@ export default function AdminDashboard() {
          setConfirmModal(null);
        }
      });
+   }
+
+   // Auto-derives a unique URL slug from the product name so admins don't
+   // have to type one by hand - a colliding slug used to fail the save
+   // silently (raw Prisma error in a toast, product never actually created).
+   function handleProductNameChange(e: React.ChangeEvent<HTMLInputElement>) {
+      const name = e.target.value;
+      setFormData(prev => {
+         const wasAutoSlug = !prev.id && (!prev.slug || prev.slug === slugify(prev.name || ""));
+         if (!wasAutoSlug) return { ...prev, name };
+
+         let base = slugify(name);
+         let candidate = base;
+         let n = 2;
+         const existingSlugs = new Set(products.map(p => p.slug));
+         while (candidate && existingSlugs.has(candidate)) {
+            candidate = `${base}-${n}`;
+            n++;
+         }
+         return { ...prev, name, slug: candidate };
+      });
    }
 
    async function saveProduct() {
@@ -878,80 +1003,680 @@ export default function AdminDashboard() {
   const filteredProducts = products.filter(p =>
     !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase()) || p.category.toLowerCase().includes(productSearch.toLowerCase())
   );
+  const quoteRequests = requests.filter(request => request.message.startsWith("PROPOSAL REQUEST:"));
+  const contactRequests = requests.filter(request => !request.message.startsWith("PROPOSAL REQUEST:"));
+  const visibleRequests = requestView === "quotes" ? quoteRequests : contactRequests;
 
+  async function updateRequestStatus(id: string, status: string) {
+    const res = await fetch("/api/contact", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status }),
+    });
 
+    if (!res.ok) {
+      showToast("Request status could not be updated.", "error");
+      return;
+    }
+
+    const updatedRequest = await res.json();
+    setRequests(prev => prev.map(request => request.id === id ? updatedRequest : request));
+    showToast("Request status updated.");
+  }
+  const editingPageSlug = ((pageForm.slug || slugify(pageForm.label || "")) || "").toLowerCase();
+
+  const openPageEditor = (page?: SitePage) => {
+    const baseValues = {
+      id: page?.id,
+      label: page?.label || "",
+      slug: page?.slug || "",
+      path: page?.path || "",
+      status: page?.status || "published",
+      section: page?.section || "content",
+    } as Partial<SitePage> & Record<string, any>;
+
+    if (page && page.slug === "challenge-courses") {
+      const match = categories.find((cat) => {
+        const categoryHref = cat.href || "";
+        return slugify(cat.label) === "challenge-courses" || cat.id === page.id || categoryHref.includes("challenge-courses");
+      });
+      if (match) {
+        baseValues.path = match.href || "/challenge-courses";
+      }
+    }
+
+    if (page?.slug === "about") {
+      Object.assign(baseValues, {
+        aboutOriginTitle: settings.aboutOriginTitle || "",
+        aboutOriginText: settings.aboutOriginText || "",
+        aboutImageUrl: settings.aboutImageUrl || "",
+      });
+    }
+
+    if (page?.slug === "contact") {
+      Object.assign(baseValues, {
+        contactEmail: settings.contactEmail || "",
+        contactPhone: settings.contactPhone || "",
+        address: settings.address || "",
+        officeHours: settings.officeHours || "",
+        whatsappNumber: settings.whatsappNumber || "",
+      });
+    }
+
+    if (page?.slug === "privacy") {
+      Object.assign(baseValues, {
+        privacyIntro: settings.privacyIntro || "",
+        privacySectionsJson: settings.privacySectionsJson || "",
+      });
+    }
+
+    if (page?.slug === "terms") {
+      Object.assign(baseValues, {
+        termsIntro: settings.termsIntro || "",
+        termsSectionsJson: settings.termsSectionsJson || "",
+      });
+    }
+
+    if (page) {
+      setPageFormMode("edit");
+      setPageForm(baseValues);
+    } else {
+      setPageFormMode("create");
+      setPageForm({
+        label: "",
+        slug: "",
+        path: "",
+        status: "published",
+        section: "content",
+      });
+    }
+    setPageFormOpen(true);
+  };
+
+  const savePageManagerEntry = async () => {
+    const label = pageForm.label?.trim();
+    const slug = (pageForm.slug || slugify(label || "")).trim();
+    const path = (pageForm.path || `/${slug}`).trim();
+
+    if (!label || !slug) {
+      showToast("Page title and slug are required.", "error");
+      return;
+    }
+
+    const payload: SitePage = {
+      id: pageForm.id || `${Date.now()}`,
+      label,
+      slug,
+      path,
+      status: pageForm.status || "published",
+      section: pageForm.section || "content",
+    };
+
+    const updatedSettings = { ...settings };
+    if (slug === "about") {
+      updatedSettings.aboutOriginTitle = pageForm.aboutOriginTitle || settings.aboutOriginTitle || "";
+      updatedSettings.aboutOriginText = pageForm.aboutOriginText || settings.aboutOriginText || "";
+      updatedSettings.aboutImageUrl = pageForm.aboutImageUrl || settings.aboutImageUrl || "";
+    }
+
+    if (slug === "contact") {
+      updatedSettings.contactEmail = pageForm.contactEmail || settings.contactEmail || "";
+      updatedSettings.contactPhone = pageForm.contactPhone || settings.contactPhone || "";
+      updatedSettings.address = pageForm.address || settings.address || "";
+      updatedSettings.officeHours = pageForm.officeHours || settings.officeHours || "";
+      updatedSettings.whatsappNumber = pageForm.whatsappNumber || settings.whatsappNumber || "";
+    }
+
+    if (slug === "privacy") {
+      updatedSettings.privacyIntro = pageForm.privacyIntro || settings.privacyIntro || "";
+      updatedSettings.privacySectionsJson = pageForm.privacySectionsJson || settings.privacySectionsJson || "[]";
+    }
+
+    if (slug === "terms") {
+      updatedSettings.termsIntro = pageForm.termsIntro || settings.termsIntro || "";
+      updatedSettings.termsSectionsJson = pageForm.termsSectionsJson || settings.termsSectionsJson || "[]";
+    }
+
+    if (["about", "contact", "privacy", "terms"].includes(slug)) {
+      setSettings(updatedSettings);
+      const res = await fetch("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedSettings),
+      });
+      if (!res.ok) {
+        showToast("Page text could not be saved.", "error");
+        return;
+      }
+    }
+
+    setPageManagerPages((prev) => {
+      if (pageFormMode === "edit") {
+        return prev.map((page) => (page.id === payload.id ? payload : page));
+      }
+      return [...prev, payload];
+    });
+
+    setPageFormOpen(false);
+    showToast(pageFormMode === "edit" ? "Page updated." : "Page added.");
+  };
+
+  const deletePageManagerEntry = (page: SitePage) => {
+    setPageManagerPages((prev) => prev.filter((item) => item.id !== page.id));
+    showToast(`Deleted ${page.label}.`);
+  };
+
+  const topNavItems = [
+    { key: "overview", label: "Overview", icon: <LayoutDashboard size={15} /> },
+    { key: "all-content", label: "All Content", icon: <Type size={15} /> },
+    { key: "page-manager", label: "Page Manager", icon: <Grid3x3 size={15} /> },
+    { key: "page_home", label: "Hero Sections", icon: <ImageIcon size={15} /> },
+    { key: "page_navigation", label: "Navigation", icon: <Map size={15} /> },
+    { key: "page_navbar", label: "Navbar Categories", icon: <Palette size={15} /> },
+    { key: "page_homegrid", label: "Homepage Grid", icon: <Grid3x3 size={15} /> },
+    { key: "products", label: "Products", icon: <Package size={15} /> },
+    { key: "projects", label: "Projects", icon: <Briefcase size={15} /> },
+    { key: "testimonials", label: "Testimonials", icon: <Star size={15} /> },
+    { key: "users", label: "Users", icon: <Users size={15} /> },
+    { key: "requests", label: "Requests", icon: <Mail size={15} /> },
+    { key: "ticker", label: "Announcement Ticker", icon: <Megaphone size={15} /> },
+    { key: "page_content", label: "Page Content", icon: <Type size={15} /> },
+    { key: "settings", label: "Site Settings", icon: <Settings size={15} /> },
+  ];
 
   return (
-    <div className="flex h-screen bg-[#f1f5f9] font-sans selection:bg-amber-100 selection:text-amber-900">
-      {/* SIDEBAR - Professionally Structured like Magento/Shopify */}
-      <aside className="w-72 bg-[#0f172a] text-slate-400 flex flex-col shrink-0 border-r border-slate-800 shadow-2xl z-40">
-        <div className="p-6 border-b border-slate-800 flex items-center justify-center">
-          <div className="w-14 h-14 rounded-2xl bg-white p-2 flex items-center justify-center shadow-2xl shadow-white/5 transition-all duration-500 overflow-hidden">
-             <img src="/logo.png" alt="SportSurf" className="w-full h-full object-contain" />
-          </div>
-        </div>
-
-        <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-8 scrollbar-hide">
-          {sidebarGroups.map(group => (
-            <div key={group.id} className="space-y-2">
-              <div className="flex items-center gap-2 px-3 mb-3">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{group.label}</span>
-                <div className="flex-1 h-px bg-slate-800/50" />
-              </div>
-              <div className="space-y-1">
-                {group.tabs.map(item => (
-                  <button
-                    key={item.key}
-                    onClick={() => { 
-                      setTab(item.key); 
-                      setActiveGroup(group.id); 
-                      setActivePageSection("hero");
-                    }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group ${tab === item.key ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20 font-bold" : "hover:bg-slate-800/50 hover:text-slate-200"}`}
-                  >
-                    <span className={`${tab === item.key ? "text-white" : "text-slate-500 group-hover:text-amber-400"} transition-colors`}>{item.icon}</span>
-                    <span className="text-sm truncate">{item.label}</span>
-                    {tab === item.key && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-glow" />}
-                  </button>
-                ))}
-              </div>
+    <div className="min-h-screen bg-[#f3f4f6] text-slate-900 font-sans selection:bg-amber-100 selection:text-amber-900">
+      <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 pt-4">
+        <header className="flex flex-wrap items-center justify-between gap-3 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7b64e] shadow-sm ring-4 ring-[#f6d99b]/40">
+              <span className="text-lg font-black text-white">S</span>
             </div>
+            <div className="leading-none">
+              <div className="text-2xl sm:text-[30px] font-black tracking-[-0.06em] text-slate-800">SPORTSURF</div>
+              <div className="mt-1 text-sm text-slate-500">Admin Dashboard</div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+          >
+            <LogOut size={16} />
+            Logout
+          </button>
+        </header>
+
+        <nav className="mb-8 flex flex-wrap items-center gap-2 border-b border-slate-200 bg-[#f5f5f5] px-2 py-2">
+          {topNavItems.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => {
+                setTab(item.key);
+                setActiveGroup(item.key === "overview" ? "system" : "pages");
+                setActivePageSection("hero");
+              }}
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-medium transition-all ${
+                tab === item.key
+                  ? "border-[#f2c46d] bg-white text-slate-800 shadow-sm"
+                  : "border-slate-200 bg-transparent text-slate-600 hover:border-slate-300 hover:bg-white"
+              }`}
+            >
+              <span className={tab === item.key ? "text-[#e29b1f]" : "text-slate-500"}>{item.icon}</span>
+              {item.label}
+            </button>
           ))}
         </nav>
 
-        <div className="p-4 mt-auto border-t border-slate-800/50 bg-slate-900/50">
-            <button onClick={handleLogout} className="flex items-center gap-3 w-full p-3 rounded-xl text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all font-semibold text-sm">
-              <LogOut size={16} /> Logout System
-            </button>
-        </div>
-      </aside>
+        <main className="pb-12">
+          {tab === "all-content" && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-[42px] font-black leading-none tracking-[-0.06em] text-slate-800">All Content</h2>
+                  <p className="mt-2 text-sm text-slate-500">One master place to edit page text, images, category branding, product content, and project media.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openPageEditor()}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#f7b64e] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#eea937]"
+                >
+                  <Plus size={16} /> Add Page
+                </button>
+              </div>
 
-      {/* MAIN VIEWPORT */}
-      <div className="flex-1 flex flex-col relative min-w-0">
-        
-        {/* DYNAMIC TOP BAR */}
-        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 h-16 flex items-center justify-between px-8 sticky top-0 z-30">
-          <div className="flex items-center gap-4">
-             <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
-                <span>Dashboard</span>
-                <ChevronRight size={12} />
-                <span className="text-slate-800 font-bold uppercase tracking-widest">{sidebarGroups.find(g => g.id === activeGroup)?.label}</span>
-                <ChevronRight size={12} />
-                <span className="text-amber-600 font-bold">{sidebarGroups.flatMap(g => g.tabs).find(t => t.key === tab)?.label}</span>
-             </div>
-          </div>
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="mb-5 flex items-center justify-between">
+                    <h3 className="text-xl font-black text-slate-800">Page text & media</h3>
+                    <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">Editable</span>
+                  </div>
+                  <div className="space-y-3">
+                    {EDITABLE_PAGES.map((page) => (
+                      <div key={page.slug} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                        <div>
+                          <div className="text-sm font-bold text-slate-800">{page.label}</div>
+                          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{page.path}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openPageEditor(basePageManagerEntries.find((entry) => entry.slug === page.slug) || {
+                            id: `page-${page.slug}`,
+                            label: page.label,
+                            slug: page.slug,
+                            path: page.path,
+                            status: "published",
+                            section: "content",
+                          })}
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700 hover:border-slate-300"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3 bg-slate-50 border border-slate-100 px-4 py-2 rounded-full">
-               <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center text-[10px] font-bold text-amber-700">A</div>
-               <span className="text-xs font-bold text-slate-700">Administrator</span>
+                <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="mb-5 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-black text-slate-800">Homepage Icons</h3>
+                      <p className="mt-1 text-xs text-slate-500">Change the icon name, upload its icon, or add a new icon.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openModal("category")}
+                      className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white hover:bg-emerald-400"
+                    >
+                      <Plus size={13} /> Add Icon
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {categories.map((cat) => (
+                      <div key={cat.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                            {cat.imageUrl ? <img src={cat.imageUrl} alt={cat.label} className="h-full w-full object-cover" /> : <Palette size={18} className="m-2 text-slate-300" />}
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-slate-800">{cat.label}</div>
+                            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Name + navbar icon + link</div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openModal("category", cat)}
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700 hover:border-slate-300"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="mb-5 flex items-center justify-between">
+                    <h3 className="text-xl font-black text-slate-800">Navigation Labels</h3>
+                    <button
+                      type="button"
+                      onClick={() => openModal("nav")}
+                      className="inline-flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white hover:bg-amber-400"
+                    >
+                      <Plus size={13} /> Add
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {navItems.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                        <div>
+                          <div className="text-sm font-bold text-slate-800">{item.label}</div>
+                          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{item.href} · Order {item.order}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openModal("nav", item)}
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700 hover:border-slate-300"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    ))}
+                    {navItems.length === 0 && <p className="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-xs font-medium text-slate-400">No navigation items found.</p>}
+                  </div>
+                </div>
+
+                <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="mb-5 flex items-center justify-between">
+                    <h3 className="text-xl font-black text-slate-800">Products</h3>
+                    <span className="rounded-full bg-sky-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-sky-700">Catalog</span>
+                  </div>
+                  <div className="space-y-3">
+                    {products.slice(0, 6).map((product) => (
+                      <div key={product.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                            {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" /> : <Package size={18} className="m-2 text-slate-300" />}
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-slate-800">{product.name}</div>
+                            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{product.category}</div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openModal("product", product)}
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700 hover:border-slate-300"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="mb-5 flex items-center justify-between">
+                    <h3 className="text-xl font-black text-slate-800">Projects</h3>
+                    <span className="rounded-full bg-violet-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-violet-700">Media</span>
+                  </div>
+                  <div className="space-y-3">
+                    {projects.slice(0, 6).map((project) => (
+                      <div key={project.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                            {project.imageUrl ? <img src={project.imageUrl} alt={project.name} className="h-full w-full object-cover" /> : <Briefcase size={18} className="m-2 text-slate-300" />}
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-slate-800">{project.name}</div>
+                            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{project.city}</div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openModal("project", project)}
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700 hover:border-slate-300"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        </header>
+          )}
 
-        {/* CONTENT SCROLL AREA */}
-        <main className="flex-1 overflow-y-auto p-8 scroll-smooth">
-          
+          {tab === "page_content" && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-[42px] font-black leading-none tracking-[-0.06em] text-slate-800">Page Content</h2>
+                  <p className="mt-2 text-sm text-slate-500">Edit the text, images, and page settings used across the website.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openPageEditor()}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#f7b64e] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#eea937]"
+                >
+                  <Plus size={16} /> Add Page
+                </button>
+              </div>
+              <div className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
+                {pageManagerPages.map((page) => (
+                  <div key={page.id} className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="text-base font-bold text-slate-800">{page.label}</div>
+                      <div className="mt-1 text-xs text-slate-400">{page.path} · {page.section}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => window.open(page.path, "_blank")} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">View</button>
+                      {page.section === "category" || HERO_EDITABLE_SLUGS.includes(page.slug) ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTab(`page_${page.slug}`);
+                            setActiveGroup("pages");
+                            setActivePageSection("hero");
+                          }}
+                          className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white hover:bg-amber-400"
+                        >
+                          Edit Content
+                        </button>
+                      ) : (
+                        <button type="button" onClick={() => openPageEditor(page)} className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white hover:bg-amber-400">Edit Content</button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tab === "ticker" && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-[42px] font-black leading-none tracking-[-0.06em] text-slate-800">Announcement Ticker</h2>
+                  <p className="mt-2 text-sm text-slate-500">Manage the scrolling announcements shown in the global header.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openModal("ticker")}
+                  className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-amber-400"
+                >
+                  <Plus size={16} /> Add Announcement
+                </button>
+              </div>
+              <div className="space-y-3">
+                {tickerItems.map((item) => (
+                  <div key={item.id} className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-4">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-sm font-black text-amber-700">{item.order}</span>
+                      <span className="font-bold text-slate-700">{item.text}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => openModal("ticker", item)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><Pencil size={14} /></button>
+                      <button type="button" onClick={() => deleteTicker(item.id)} className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-100"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                ))}
+                {tickerItems.length === 0 && <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-12 text-center text-sm text-slate-400">No announcements found.</div>}
+              </div>
+            </div>
+          )}
+
+          {tab === "page_navigation" && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-[42px] font-black leading-none tracking-[-0.06em] text-slate-800">Navigation</h2>
+                  <p className="mt-2 text-sm text-slate-500">Manage the text links shown in the website header.</p>
+                </div>
+                <button type="button" onClick={() => openModal("nav")} className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-white hover:bg-amber-400">
+                  <Plus size={16} /> Add Link
+                </button>
+              </div>
+              <div className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
+                {navItems.map((item) => (
+                  <div key={item.id} className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="text-base font-bold text-slate-800">{item.label}</div>
+                      <div className="mt-1 text-xs text-slate-400">{item.href} · Order {item.order}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => openModal("nav", item)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><Pencil size={13} /> Edit</button>
+                      <button type="button" onClick={() => deleteNav(item.id)} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-100"><Trash2 size={13} /> Delete</button>
+                    </div>
+                  </div>
+                ))}
+                {navItems.length === 0 && <div className="p-12 text-center text-sm text-slate-400">No navigation links found.</div>}
+              </div>
+            </div>
+          )}
+
+          {tab === "page_navbar" && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-[42px] font-black leading-none tracking-[-0.06em] text-slate-800">Navbar Categories</h2>
+                  <p className="mt-2 text-sm text-slate-500">Manage the icon categories displayed below the website header.</p>
+                </div>
+                <button type="button" onClick={() => openModal("category")} className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-400">
+                  <Plus size={16} /> Add Category Icon
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {categories.map((category) => (
+                  <div key={category.id} className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                      {category.navbarIconUrl ? <img src={category.navbarIconUrl} alt={category.label} className="h-full w-full object-contain p-2" /> : category.iconSvg ? <div className="h-10 w-10" dangerouslySetInnerHTML={{ __html: category.iconSvg }} /> : <Palette size={24} className="text-slate-300" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-bold text-slate-800">{category.label}</div>
+                      <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Order {category.order}</div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button type="button" onClick={() => openModal("category", category)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-slate-700 hover:bg-slate-50"><Pencil size={12} /> Edit</button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTab(`page_${slugify(category.label)}`);
+                            setActiveGroup("pages");
+                            setActivePageSection("hero");
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-amber-700 hover:bg-amber-100"
+                        >
+                          <Palette size={12} /> Page colours &amp; text
+                        </button>
+                        <button type="button" onClick={() => deleteCategory(category.id)} className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-red-600 hover:bg-red-100"><Trash2 size={12} /> Delete</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {categories.length === 0 && <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-12 text-center text-sm text-slate-400">No navbar categories found.</div>}
+            </div>
+          )}
+
+          {tab === "page_homegrid" && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-[42px] font-black leading-none tracking-[-0.06em] text-slate-800">Homepage Grid</h2>
+                  <p className="mt-2 text-sm text-slate-500">Manage the image cards and feature blocks shown on the homepage.</p>
+                </div>
+                <button type="button" onClick={() => openModal("homepage")} className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-white hover:bg-amber-400">
+                  <Plus size={16} /> Add Grid Card
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {homepageGridItems.map((item) => (
+                  <div key={item.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <div className="aspect-video bg-slate-100">
+                      {item.imageUrl ? <img src={item.imageUrl} alt={item.label} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-slate-300"><ImageIcon size={36} /></div>}
+                    </div>
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="font-bold text-slate-800">{item.label}</h3>
+                          <p className="mt-1 text-xs text-slate-500">{item.description || "No description"}</p>
+                        </div>
+                        <span className="shrink-0 rounded-md bg-slate-50 px-2 py-1 text-[10px] font-black text-slate-500">#{item.order}</span>
+                      </div>
+                      <div className="mt-4 flex gap-2 border-t border-slate-100 pt-4">
+                        <button type="button" onClick={() => openModal("homepage", item)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><Pencil size={13} /> Edit</button>
+                        <button type="button" onClick={() => deleteHomepageGridItem(item.id)} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-100"><Trash2 size={13} /> Delete</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {homepageGridItems.length === 0 && <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-12 text-center text-sm text-slate-400">No homepage grid cards found.</div>}
+            </div>
+          )}
+
+          {pageFormOpen && (
+            <Modal title={pageFormMode === "edit" ? "Edit Page" : "Add Page"} onClose={() => setPageFormOpen(false)}>
+              <div className="space-y-5">
+                <Field label="Page Title" name="label" value={pageForm.label || ""} onChange={(e) => setPageForm((current) => ({ ...current, label: e.target.value }))} placeholder="About Us" required />
+                <Field label="Slug" name="slug" value={pageForm.slug || ""} onChange={(e) => setPageForm((current) => ({ ...current, slug: e.target.value }))} placeholder="about-us" required />
+                <Field label="Path" name="path" value={pageForm.path || ""} onChange={(e) => setPageForm((current) => ({ ...current, path: e.target.value }))} placeholder="/about" required />
+                <div className="grid gap-5 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Section</label>
+                    <select
+                      value={pageForm.section || "content"}
+                      onChange={(e) => setPageForm((current) => ({ ...current, section: e.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 focus:border-amber-400 focus:outline-none focus:ring-4 focus:ring-amber-500/10"
+                    >
+                      <option value="content">Content</option>
+                      <option value="catalog">Catalog</option>
+                      <option value="portfolio">Portfolio</option>
+                      <option value="category">Category</option>
+                      <option value="utility">Utility</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Status</label>
+                    <select
+                      value={pageForm.status || "published"}
+                      onChange={(e) => setPageForm((current) => ({ ...current, status: e.target.value as "published" | "draft" }))}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 focus:border-amber-400 focus:outline-none focus:ring-4 focus:ring-amber-500/10"
+                    >
+                      <option value="published">Published</option>
+                      <option value="draft">Draft</option>
+                    </select>
+                  </div>
+                </div>
+                {(editingPageSlug === "about" || editingPageSlug === "contact" || editingPageSlug === "privacy" || editingPageSlug === "terms") && (
+                  <div className="space-y-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    {editingPageSlug === "about" && (
+                      <>
+                        <Field label="Story Title" name="aboutOriginTitle" value={pageForm.aboutOriginTitle || ""} onChange={(e) => setPageForm((current) => ({ ...current, aboutOriginTitle: e.target.value }))} />
+                        <Field label="The Origin" name="aboutOriginText" value={pageForm.aboutOriginText || ""} onChange={(e) => setPageForm((current) => ({ ...current, aboutOriginText: e.target.value }))} textarea />
+                        <ImageUpload label="About Page Image" value={pageForm.aboutImageUrl || ""} onChange={(value) => setPageForm((current) => ({ ...current, aboutImageUrl: value }))} />
+                      </>
+                    )}
+
+                    {editingPageSlug === "contact" && (
+                      <>
+                        <div className="grid gap-5 md:grid-cols-2">
+                          <Field label="Email" name="contactEmail" value={pageForm.contactEmail || ""} onChange={(e) => setPageForm((current) => ({ ...current, contactEmail: e.target.value }))} />
+                          <Field label="Phone" name="contactPhone" value={pageForm.contactPhone || ""} onChange={(e) => setPageForm((current) => ({ ...current, contactPhone: e.target.value }))} />
+                        </div>
+                        <Field label="Address" name="address" value={pageForm.address || ""} onChange={(e) => setPageForm((current) => ({ ...current, address: e.target.value }))} textarea />
+                        <div className="grid gap-5 md:grid-cols-2">
+                          <Field label="Office Hours" name="officeHours" value={pageForm.officeHours || ""} onChange={(e) => setPageForm((current) => ({ ...current, officeHours: e.target.value }))} />
+                          <Field label="WhatsApp Number" name="whatsappNumber" value={pageForm.whatsappNumber || ""} onChange={(e) => setPageForm((current) => ({ ...current, whatsappNumber: e.target.value }))} />
+                        </div>
+                      </>
+                    )}
+
+                    {editingPageSlug === "privacy" && (
+                      <>
+                        <Field label="Privacy Intro" name="privacyIntro" value={pageForm.privacyIntro || ""} onChange={(e) => setPageForm((current) => ({ ...current, privacyIntro: e.target.value }))} textarea />
+                        <Field label="Privacy Sections JSON" name="privacySectionsJson" value={pageForm.privacySectionsJson || "[]"} onChange={(e) => setPageForm((current) => ({ ...current, privacySectionsJson: e.target.value }))} textarea />
+                      </>
+                    )}
+
+                    {editingPageSlug === "terms" && (
+                      <>
+                        <Field label="Terms Intro" name="termsIntro" value={pageForm.termsIntro || ""} onChange={(e) => setPageForm((current) => ({ ...current, termsIntro: e.target.value }))} textarea />
+                        <Field label="Terms Sections JSON" name="termsSectionsJson" value={pageForm.termsSectionsJson || "[]"} onChange={(e) => setPageForm((current) => ({ ...current, termsSectionsJson: e.target.value }))} textarea />
+                      </>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-3 pt-3">
+                  <button type="button" onClick={() => setPageFormOpen(false)} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancel</button>
+                  <button type="button" onClick={savePageManagerEntry} className="rounded-xl bg-[#f7b64e] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#eea937]">{pageFormMode === "edit" ? "Save page" : "Add page"}</button>
+                </div>
+              </div>
+            </Modal>
+          )}
+
           {/* DYNAMIC PAGE-CENTRIC EDITOR */}
           {tab.startsWith("page_") && (() => {
              const slug = tab.replace("page_", "");
@@ -996,9 +1721,9 @@ export default function AdminDashboard() {
                     </a>
                   </div>
 
-                  <div className="flex-1 grid grid-cols-12 gap-8 min-h-0">
+                  <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 min-h-0">
                      {/* Subsection Navigator (Left) */}
-                     <div className="col-span-3 space-y-2 h-fit sticky top-0">
+                     <div className="lg:col-span-3 space-y-2 h-fit lg:sticky lg:top-0">
                         <div className="bg-white rounded-[2rem] p-4 shadow-sm border border-slate-100">
                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 px-3">Page Sections</p>
                            {sections.map(s => (
@@ -1030,7 +1755,7 @@ export default function AdminDashboard() {
                      </div>
 
                      {/* Dynamic Editor Pane (Right) */}
-                     <div className="col-span-9">
+                     <div className="lg:col-span-9">
                         <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100 min-h-[600px]">
                            {/* SECTION: HERO */}
                            {activePageSection === "hero" && (
@@ -1046,7 +1771,7 @@ export default function AdminDashboard() {
                                           if (!cat) return <div className="p-10 bg-slate-50 rounded-3xl text-center text-slate-400 italic">Category data not found. Syncing required.</div>;
                                           return (
                                             <div className="space-y-4">
-                                               <div className="grid grid-cols-2 gap-4">
+                                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                   <div>
                                                      <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 px-1">Navigation Label</label>
                                                      <input type="text" value={cat.label} onChange={(e) => {
@@ -1075,7 +1800,7 @@ export default function AdminDashboard() {
                                                         setCategories(newCats);
                                                      }} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm h-32 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 font-medium" />
                                                </div>
-                                               <div className="grid grid-cols-2 gap-4">
+                                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                   <div>
                                                      <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 px-1">Hero Background Color (Hex)</label>
                                                      <div className="relative">
@@ -1095,13 +1820,31 @@ export default function AdminDashboard() {
                                                      </div>
                                                   </div>
                                                   <div>
+                                                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 px-1">Text Color (Hex)</label>
+                                                     <div className="relative">
+                                                        <input type="text" value={cat.textColor || "#0f172a"} onChange={(e) => {
+                                                           const newCats = [...categories];
+                                                           const idx = newCats.findIndex(c => c.id === cat.id);
+                                                           newCats[idx].textColor = e.target.value;
+                                                           setCategories(newCats);
+                                                        }} className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 font-bold" />
+                                                        <input type="color" value={cat.textColor || "#0f172a"} onChange={(e) => {
+                                                           const newCats = [...categories];
+                                                           const idx = newCats.findIndex(c => c.id === cat.id);
+                                                           newCats[idx].textColor = e.target.value;
+                                                           setCategories(newCats);
+                                                        }} className="absolute left-3 top-1/2 -translate-y-1/2 w-7 h-7 opacity-0 cursor-pointer z-10" title="Choose text color" />
+                                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded border border-slate-200 pointer-events-none" style={{backgroundColor: cat.textColor || "#0f172a"}}></div>
+                                                     </div>
+                                                  </div>
+                                               </div>
+                                               <div>
                                                      <ImageUpload label="Page Header Logo (Override)" value={cat.logoUrl || ""} onChange={(v) => {
                                                          const newCats = [...categories];
                                                          const idx = newCats.findIndex(c => c.id === cat.id);
                                                          newCats[idx].logoUrl = v;
                                                          setCategories(newCats);
                                                      }} />
-                                                  </div>
                                                </div>
                                                <div>
                                                   <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 px-1">Top Badge / Tag</label>
@@ -1112,7 +1855,7 @@ export default function AdminDashboard() {
                                                      setCategories(newCats);
                                                   }} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 font-bold" placeholder="e.g. Infrastructure" />
                                                </div>
-                                               <div className="grid grid-cols-2 gap-4">
+                                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                   <ImageUpload label="Background Banner Image" value={cat.imageUrl || ""} onChange={(v) => {
                                                       const newCats = [...categories];
                                                       const idx = newCats.findIndex(c => c.id === cat.id);
@@ -1132,7 +1875,7 @@ export default function AdminDashboard() {
                                                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 flex items-center gap-2">
                                                       <Star size={10} /> Specialized Hero Grid (3-Image Layout)
                                                    </span>
-                                                   <div className="grid grid-cols-2 gap-4">
+                                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                       <div className="space-y-4">
                                                          <ImageUpload label="Hero Grid Image 2" value={cat.imageUrl2 || ""} onChange={(v) => {
                                                             const newCats = [...categories];
@@ -1169,7 +1912,7 @@ export default function AdminDashboard() {
                                                   <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 flex items-center gap-2">
                                                      <Handshake size={10} /> Partner Section Branding
                                                   </span>
-                                                  <div className="grid grid-cols-2 gap-4">
+                                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                     <div>
                                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 px-1">Collab Background Color</label>
                                                        <div className="relative">
@@ -1207,7 +1950,7 @@ export default function AdminDashboard() {
                                                        </div>
                                                     </div>
                                                   </div>
-                                                  <div className="grid grid-cols-2 gap-4">
+                                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                      <Field label="Title" name="collabTitle" value={cat.collabTitle || ""} onChange={(e) => {
                                                         const newCats = [...categories];
                                                         const idx = newCats.findIndex(c => c.id === cat.id);
@@ -1230,7 +1973,7 @@ export default function AdminDashboard() {
                                                         setCategories(newCats);
                                                      }} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 font-medium min-h-[80px]" />
                                                   </div>
-                                                  <div className="grid grid-cols-2 gap-4">
+                                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                      <Field label="Button Text" name="collabCtaText" value={cat.collabCtaText || ""} onChange={(e) => {
                                                         const newCats = [...categories];
                                                         const idx = newCats.findIndex(c => c.id === cat.id);
@@ -1247,7 +1990,7 @@ export default function AdminDashboard() {
                                                </div>
 
 
-                                               <div className="grid grid-cols-2 gap-4">
+                                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                   <div>
                                                      <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 px-1">Primary Button Text</label>
                                                      <input type="text" value={cat.ctaText || ""} onChange={(e) => {
@@ -1267,7 +2010,7 @@ export default function AdminDashboard() {
                                                      }} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 font-bold" />
                                                   </div>
                                                </div>
-                                               <div className="grid grid-cols-2 gap-4">
+                                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                   <div>
                                                      <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 px-1">Secondary Button Text</label>
                                                      <input type="text" value={cat.cta2Text || ""} onChange={(e) => {
@@ -1298,7 +2041,7 @@ export default function AdminDashboard() {
                                           const data: any = hero || { page: slug, title: `Welcome to ${page?.label}`, subtitle: "Expert infrastructure.", textColor: "#ffffff", overlayOpacity: 0.4 };
                                           return (
                                              <div className="space-y-4">
-                                                <div className="grid grid-cols-2 gap-4">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                    <ImageUpload label="Page Header Logo (Override)" value={data.logoUrl || ""} onChange={(v) => {
                                                        const newHeroes = [...heroes];
                                                        const idx = newHeroes.findIndex(h => h.id === data.id);
@@ -1326,7 +2069,7 @@ export default function AdminDashboard() {
                                                       setHeroes(newHeroes);
                                                    }
                                                 }} textarea />
-                                                <div className="grid grid-cols-2 gap-4">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                    <div>
                                                       <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 px-1">Text Color (Hex)</label>
                                                       <div className="relative">
@@ -1350,7 +2093,7 @@ export default function AdminDashboard() {
                                                       </div>
                                                    </div>
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-4">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                    <ImageUpload label="Hero Background Media" value={data.imageUrl || ""} onChange={(v) => {
                                                       const newHeroes = [...heroes];
                                                       const idx = newHeroes.findIndex(h => h.id === data.id);
@@ -1668,57 +2411,140 @@ export default function AdminDashboard() {
           })()}
 
           {/* DYNAMIC TABS FOR OTHER SYSTEMS */}
+          {tab === "page-manager" && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-[42px] font-black leading-none tracking-[-0.06em] text-slate-800">Page Manager</h2>
+                  <p className="mt-2 text-sm text-slate-500">Manage all pages on the site, including About, Products, categories, and custom pages.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openPageEditor()}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#f7b64e] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#eea937]"
+                >
+                  <Plus size={16} /> Add Page
+                </button>
+              </div>
+
+              <div className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-[0_1px_0_rgba(15,23,42,0.02)]">
+                <div className="overflow-x-auto">
+                <div className="min-w-[640px]">
+                <div className="grid grid-cols-[1.5fr_1fr_1fr_0.9fr_0.9fr] gap-4 border-b border-slate-200 bg-slate-50 px-6 py-4 text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
+                  <span>Page</span>
+                  <span>Slug</span>
+                  <span>Path</span>
+                  <span>Status</span>
+                  <span className="text-right">Actions</span>
+                </div>
+
+                {pageManagerPages.map((page) => (
+                  <div key={page.id} className="grid grid-cols-[1.5fr_1fr_1fr_0.9fr_0.9fr] items-center gap-4 border-b border-slate-100 px-6 py-4 last:border-b-0">
+                    <div>
+                      <div className="text-base font-bold text-slate-800">{page.label}</div>
+                      <div className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-400">{page.section}</div>
+                    </div>
+                    <div className="text-sm text-slate-600">/{page.slug}</div>
+                    <div className="text-sm text-slate-600">{page.path}</div>
+                    <div>
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.15em] ${page.status === "published" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                        {page.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-end gap-2">
+                      <button type="button" onClick={() => window.open(page.path, "_blank")} className="rounded-lg border border-slate-200 px-2.5 py-2 text-xs font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50">View</button>
+                      {page.section === "category" || HERO_EDITABLE_SLUGS.includes(page.slug) ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTab(`page_${page.slug}`);
+                            setActiveGroup("pages");
+                            setActivePageSection("hero");
+                          }}
+                          className="rounded-lg border border-slate-200 px-2.5 py-2 text-xs font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                        >
+                          Edit
+                        </button>
+                      ) : (
+                        <button type="button" onClick={() => openPageEditor(page)} className="rounded-lg border border-slate-200 px-2.5 py-2 text-xs font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50">Edit</button>
+                      )}
+                      {page.section !== "category" && (
+                        <button type="button" onClick={() => deletePageManagerEntry(page)} className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 text-xs font-medium text-red-600 hover:bg-red-100">Delete</button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {tab === "overview" && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-               <div className="flex items-center justify-between mb-8">
-                  <div>
-                     <h2 className="text-3xl font-black text-slate-800 tracking-tight underline decoration-amber-500/30 decoration-8 underline-offset-4">Control Center</h2>
-                     <p className="text-sm text-slate-500 font-medium">Real-time snapshot of your sports ecosystem</p>
-                  </div>
-                  <div className="flex items-center gap-3 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm">
-                     <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-                        <Shield size={20} />
-                     </div>
-                     <div className="pr-4">
-                        <p className="text-[10px] font-black uppercase text-slate-400 leading-none">System Status</p>
-                        <p className="text-xs font-bold text-slate-700">Operational</p>
-                     </div>
-                  </div>
-               </div>
+              <h2 className="mb-8 text-[56px] font-black leading-none tracking-[-0.06em] text-slate-800">Dashboard Overview</h2>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                  {[
-                    { label: "Inventory", value: stats.productCount, icon: <Package size={24} />, color: "bg-blue-500" },
-                    { label: "Partners", value: collaborations.length, icon: <Handshake size={24} />, color: "bg-amber-500" },
-                    { label: "Project Wins", value: stats.projectCount, icon: <Briefcase size={24} />, color: "bg-purple-500" },
-                    { label: "Verified Users", value: stats.userCount, icon: <Users size={24} />, color: "bg-emerald-500" },
-                  ].map((stat, i) => (
-                    <div key={i} className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 hover:shadow-xl transition-all group overflow-hidden relative">
-                       <div className="flex items-center gap-4 relative z-10">
-                          <div className={`w-14 h-14 ${stat.color} text-white rounded-2xl flex items-center justify-center shadow-lg shadow-current/20`}>
-                             {stat.icon}
-                          </div>
-                          <div>
-                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{stat.label}</p>
-                             <p className="text-3xl font-black text-slate-800">{stat.value}</p>
-                          </div>
-                       </div>
+              <div className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+                {[
+                  { label: "Users", value: stats.userCount, icon: <Users size={28} />, color: "bg-[#5d8bf3]" },
+                  { label: "Products", value: stats.productCount, icon: <Package size={28} />, color: "bg-[#f7b64e]" },
+                  { label: "Projects", value: stats.projectCount, icon: <Briefcase size={28} />, color: "bg-[#3ec2a0]" },
+                  { label: "Testimonials", value: stats.testimonialCount, icon: <Star size={28} />, color: "bg-[#b96ae8]" },
+                ].map((stat, i) => (
+                  <div key={i} className="flex items-center gap-4 rounded-[22px] border border-slate-200 bg-white px-6 py-6 shadow-[0_1px_0_rgba(15,23,42,0.02)]">
+                    <div className={`flex h-14 w-14 items-center justify-center rounded-[18px] text-white shadow-sm ${stat.color}`}>
+                      {stat.icon}
                     </div>
-                  ))}
-               </div>
-
-               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-10">
-                  <div className="lg:col-span-2 space-y-6">
-                     <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl shadow-slate-900/30">
-                        <h3 className="text-2xl font-black mb-2 relative z-10">Welcome to Version 2.0</h3>
-                        <p className="text-slate-400 text-sm mb-8 max-w-sm relative z-10">Optimized for page-centric management and direct server-side image uploads.</p>
-                        <div className="flex gap-4 relative z-10">
-                           <button onClick={() => setTab("home_page")} className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all">Edit Home Page</button>
-                           <button onClick={() => setTab("products")} className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/10 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all">Catalog</button>
-                        </div>
-                     </div>
+                    <div>
+                      <div className="text-[56px] font-black leading-none tracking-[-0.08em] text-slate-800">{stat.value}</div>
+                      <div className="mt-2 text-xl font-medium text-slate-600">{stat.label}</div>
+                    </div>
                   </div>
-               </div>
+                ))}
+              </div>
+
+              <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-[0_1px_0_rgba(15,23,42,0.02)]">
+                <h3 className="mb-6 text-[31px] font-black tracking-[-0.05em] text-slate-800">Quick Links</h3>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  {[
+                    { label: "Hero Sections", icon: <ImageIcon size={18} />, active: true },
+                    { label: "Navigation", icon: <Map size={18} />, active: true },
+                    { label: "Navbar Categories", icon: <Palette size={18} />, active: true },
+                    { label: "Homepage Grid", icon: <Grid3x3 size={18} />, active: true },
+                    { label: "Products", icon: <Package size={18} />, active: true },
+                    { label: "Projects", icon: <Briefcase size={18} />, active: true },
+                    { label: "Testimonials", icon: <Star size={18} />, active: true },
+                    { label: "Users", icon: <Users size={18} />, active: true },
+                    { label: "Announcement Ticker", icon: <Megaphone size={18} />, active: true },
+                    { label: "Page Content", icon: <Type size={18} />, active: true },
+                    { label: "Site Settings", icon: <Settings size={18} />, active: true },
+                  ].map((item, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        if (idx === 0) setTab("page_home");
+                        else if (idx === 1) setTab("page_home");
+                        else if (idx === 2) setTab("page_home");
+                        else if (idx === 3) setTab("page_home");
+                        else if (idx === 4) setTab("products");
+                        else if (idx === 5) setTab("projects");
+                        else if (idx === 6) setTab("testimonials");
+                        else if (idx === 7) setTab("users");
+                        else if (idx === 8) setTab("settings");
+                        else if (idx === 9) setTab("page_home");
+                        else setTab("settings");
+                      }}
+                      className="flex items-center gap-3 rounded-xl border border-slate-200 bg-[#f8f9fb] px-4 py-4 text-left text-lg font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white"
+                    >
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#f7d18a] bg-[#fffaf1] text-[#d68a15]">
+                        {item.icon}
+                      </span>
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -1986,6 +2812,78 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* REQUESTS */}
+        {tab === "requests" && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="mb-8">
+              <h2 className="text-2xl font-black text-slate-800">Requests</h2>
+              <p className="mt-2 text-sm text-slate-500">Review quote requests and contact inquiries submitted through the website.</p>
+            </div>
+
+            <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setRequestView("quotes")}
+                className={`rounded-2xl border p-5 text-left transition ${requestView === "quotes" ? "border-amber-300 bg-amber-50 shadow-sm" : "border-slate-200 bg-white hover:border-slate-300"}`}
+              >
+                <div className="text-xs font-black uppercase tracking-widest text-slate-500">Quote Requests</div>
+                <div className="mt-2 text-3xl font-black text-slate-800">{quoteRequests.length}</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRequestView("contacts")}
+                className={`rounded-2xl border p-5 text-left transition ${requestView === "contacts" ? "border-amber-300 bg-amber-50 shadow-sm" : "border-slate-200 bg-white hover:border-slate-300"}`}
+              >
+                <div className="text-xs font-black uppercase tracking-widest text-slate-500">Contact Requests</div>
+                <div className="mt-2 text-3xl font-black text-slate-800">{contactRequests.length}</div>
+              </button>
+            </div>
+
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 bg-slate-50 px-5 py-4">
+                <h3 className="text-sm font-black uppercase tracking-widest text-slate-700">
+                  {requestView === "quotes" ? "Quote Requests" : "Contact Requests"}
+                </h3>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {visibleRequests.map(request => (
+                  <article key={request.id} className="p-5 transition hover:bg-slate-50/60">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <h4 className="text-base font-bold text-slate-800">{request.name}</h4>
+                          <select
+                            value={request.status}
+                            onChange={event => updateRequestStatus(request.id, event.target.value)}
+                            className={`rounded-full border-0 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider focus:ring-2 focus:ring-amber-300 ${request.status === "pending" ? "bg-amber-100 text-amber-700" : request.status === "rejected" ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}
+                            aria-label={`Update status for ${request.name}`}
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="completed">Completed</option>
+                            <option value="rejected">Rejected</option>
+                          </select>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-500">
+                          <a href={`mailto:${request.email}`} className="hover:text-amber-600">{request.email}</a>
+                          {request.phone && <a href={`tel:${request.phone}`} className="hover:text-amber-600">{request.phone}</a>}
+                          {request.city && <span>{request.city}</span>}
+                          <span>{new Date(request.createdAt).toLocaleString()}</span>
+                        </div>
+                        {request.surface && <div className="mt-3 text-xs font-bold uppercase tracking-wider text-amber-600">{request.surface}</div>}
+                        <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-600">{request.message}</p>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+                {visibleRequests.length === 0 && (
+                  <div className="px-5 py-16 text-center text-sm text-slate-400">No {requestView === "quotes" ? "quote" : "contact"} requests found.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* USERS */}
         {tab === "users" && (
           <div>
@@ -1995,7 +2893,8 @@ export default function AdminDashboard() {
               <input value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Search users..." className="w-full border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
             </div>
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <table className="w-full">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px]">
                 <thead className="bg-slate-50 border-b border-slate-100">
                   <tr>
                     <th className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500 px-5 py-3">Name</th>
@@ -2026,6 +2925,7 @@ export default function AdminDashboard() {
                   {filteredUsers.length === 0 && <tr><td colSpan={5} className="text-center py-12 text-slate-400 text-sm">No users found.</td></tr>}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         )}
@@ -2035,14 +2935,14 @@ export default function AdminDashboard() {
           <div>
             <h2 className="text-2xl font-black text-slate-800 mb-6">Site Settings</h2>
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 max-w-2xl space-y-5">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Site Name" name="siteName" value={settings.siteName} onChange={e => setSettings(s => ({ ...s, siteName: e.target.value }))} required />
                 <Field label="Logo URL" name="logoUrl" value={settings.logoUrl || ""} onChange={e => setSettings(s => ({ ...s, logoUrl: e.target.value }))} />
               </div>
 
               <div className="border-t border-slate-100 pt-5">
                 <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2"><Palette size={14} /> Colors</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Primary Color</label>
                     <div className="flex items-center gap-2">
@@ -2062,7 +2962,7 @@ export default function AdminDashboard() {
 
               <div className="border-t border-slate-100 pt-5">
                 <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2"><Type size={14} /> Typography</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field label="Heading Font" name="fontHeading" value={settings.fontHeading} onChange={e => setSettings(s => ({ ...s, fontHeading: e.target.value }))} />
                   <Field label="Body Font" name="fontBody" value={settings.fontBody} onChange={e => setSettings(s => ({ ...s, fontBody: e.target.value }))} />
                 </div>
@@ -2084,11 +2984,11 @@ export default function AdminDashboard() {
 
               <div className="border-t border-slate-100 pt-5">
                 <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2"><LayoutDashboard size={14} /> CTA Bottom Banner</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field label="CTA Title" name="ctaTitle" value={settings.ctaTitle || ""} onChange={e => setSettings(s => ({ ...s, ctaTitle: e.target.value }))} />
                   <Field label="Button Text" name="ctaButton" value={settings.ctaButton || ""} onChange={e => setSettings(s => ({ ...s, ctaButton: e.target.value }))} />
                 </div>
-                <div className="grid grid-cols-2 gap-4 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                   <Field label="CTA Subtitle" name="ctaSubtitle" value={settings.ctaSubtitle || ""} onChange={e => setSettings(s => ({ ...s, ctaSubtitle: e.target.value }))} />
                   <Field label="Redirect Link" name="ctaLink" value={settings.ctaLink || ""} onChange={e => setSettings(s => ({ ...s, ctaLink: e.target.value }))} />
                 </div>
@@ -2096,15 +2996,32 @@ export default function AdminDashboard() {
 
               <div className="border-t border-slate-100 pt-5">
                 <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2"><LayoutDashboard size={14} /> Stat Counters & Certifications (JSON Array format)</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field label="Stats Json (value/label)" name="statsJson" value={settings.statsJson || "[]"} onChange={e => setSettings(s => ({ ...s, statsJson: e.target.value }))} textarea />
                   <Field label="Certifications Json (title/imageUrl)" name="certsJson" value={settings.certsJson || "[]"} onChange={e => setSettings(s => ({ ...s, certsJson: e.target.value }))} textarea />
                 </div>
               </div>
 
               <div className="border-t border-slate-100 pt-5">
+                <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2"><ImageIcon size={14} /> Home Hero & Brand Copy</h3>
+                <div className="space-y-4">
+                  <Field label="Home Hero Tag" name="homeHeroTag" value={settings.homeHeroTag || ""} onChange={e => setSettings(s => ({ ...s, homeHeroTag: e.target.value }))} />
+                  <Field label="Home Hero Title" name="homeHeroTitle" value={settings.homeHeroTitle || ""} onChange={e => setSettings(s => ({ ...s, homeHeroTitle: e.target.value }))} />
+                  <Field label="Home Hero Subtitle" name="homeHeroSubtitle" value={settings.homeHeroSubtitle || ""} onChange={e => setSettings(s => ({ ...s, homeHeroSubtitle: e.target.value }))} textarea />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field label="Primary CTA Text" name="homeHeroPrimaryButtonText" value={settings.homeHeroPrimaryButtonText || ""} onChange={e => setSettings(s => ({ ...s, homeHeroPrimaryButtonText: e.target.value }))} />
+                    <Field label="Primary CTA Link" name="homeHeroPrimaryButtonLink" value={settings.homeHeroPrimaryButtonLink || ""} onChange={e => setSettings(s => ({ ...s, homeHeroPrimaryButtonLink: e.target.value }))} />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field label="Secondary CTA Text" name="homeHeroSecondaryButtonText" value={settings.homeHeroSecondaryButtonText || ""} onChange={e => setSettings(s => ({ ...s, homeHeroSecondaryButtonText: e.target.value }))} />
+                    <Field label="Secondary CTA Link" name="homeHeroSecondaryButtonLink" value={settings.homeHeroSecondaryButtonLink || ""} onChange={e => setSettings(s => ({ ...s, homeHeroSecondaryButtonLink: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-5">
                 <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2"><Link2 size={14} /> Contact Info</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field label="Email" name="contactEmail" value={settings.contactEmail || ""} onChange={e => setSettings(s => ({ ...s, contactEmail: e.target.value }))} />
                   <Field label="Phone" name="contactPhone" value={settings.contactPhone || ""} onChange={e => setSettings(s => ({ ...s, contactPhone: e.target.value }))} />
                 </div>
@@ -2113,15 +3030,15 @@ export default function AdminDashboard() {
 
               <div className="border-t border-slate-100 pt-5">
                 <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2"><Globe size={14} /> Social Links</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field label="Facebook" name="facebookLink" value={settings.facebookLink || ""} onChange={e => setSettings(s => ({ ...s, facebookLink: e.target.value }))} placeholder="https://facebook.com/..." />
                   <Field label="Twitter (X)" name="twitterLink" value={settings.twitterLink || ""} onChange={e => setSettings(s => ({ ...s, twitterLink: e.target.value }))} placeholder="https://twitter.com/..." />
                 </div>
-                <div className="grid grid-cols-2 gap-4 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                   <Field label="Instagram" name="instagramLink" value={settings.instagramLink || ""} onChange={e => setSettings(s => ({ ...s, instagramLink: e.target.value }))} placeholder="https://instagram.com/..." />
                   <Field label="LinkedIn" name="linkedinLink" value={settings.linkedinLink || ""} onChange={e => setSettings(s => ({ ...s, linkedinLink: e.target.value }))} placeholder="https://linkedin.com/..." />
                 </div>
-                <div className="grid grid-cols-2 gap-4 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                   <Field label="YouTube" name="youtubeLink" value={settings.youtubeLink || ""} onChange={e => setSettings(s => ({ ...s, youtubeLink: e.target.value }))} placeholder="https://youtube.com/..." />
                   <Field label="Pinterest" name="pinterestLink" value={settings.pinterestLink || ""} onChange={e => setSettings(s => ({ ...s, pinterestLink: e.target.value }))} placeholder="https://pinterest.com/..." />
                 </div>
@@ -2206,11 +3123,11 @@ export default function AdminDashboard() {
             <Field label="Page" name="page" value={formData.page || ""} onChange={handleFormChange} required />
             <Field label="Title" name="title" value={formData.title || ""} onChange={handleFormChange} required />
             <Field label="Subtitle" name="subtitle" value={formData.subtitle || ""} onChange={handleFormChange} textarea />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                <ImageUpload label="Hero Media Image" value={formData.imageUrl || ""} onChange={(v) => setFormData(p => ({ ...p, imageUrl: v }))} />
                <ImageUpload label="Hero Background Video" value={formData.videoUrl || ""} onChange={(v) => setFormData(p => ({ ...p, videoUrl: v }))} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="CTA Text" name="ctaText" value={formData.ctaText || ""} onChange={handleFormChange} />
               <Field label="CTA Link" name="ctaLink" value={formData.ctaLink || ""} onChange={handleFormChange} />
             </div>
@@ -2240,18 +3157,18 @@ export default function AdminDashboard() {
                       <>
                         <Field label="Banner Title" name="label" value={formData.label || ""} onChange={handleFormChange} required />
                         <Field label="Short Banner Text" name="description" value={formData.description || ""} onChange={handleFormChange} textarea />
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                            <ImageUpload label="Hero Background Image" value={formData.imageUrl || ""} onChange={(v) => setFormData(p => ({ ...p, imageUrl: v }))} />
                            <ImageUpload label="Hero Background Video" value={formData.videoUrl || ""} onChange={(v) => setFormData(p => ({ ...p, videoUrl: v }))} />
                         </div>
                         <div className="pt-2">
                            <Field label="Top Badge/Tag" name="heroTag" value={formData.heroTag || ""} onChange={handleFormChange} />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                            <Field label="Button 1 Text" name="ctaText" value={formData.ctaText || ""} onChange={handleFormChange} />
                            <Field label="Button 1 Link" name="ctaLink" value={formData.ctaLink || ""} onChange={handleFormChange} />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                            <Field label="Button 2 Text" name="cta2Text" value={formData.cta2Text || ""} onChange={handleFormChange} />
                            <Field label="Button 2 Link" name="cta2Link" value={formData.cta2Link || ""} onChange={handleFormChange} />
                         </div>
@@ -2273,17 +3190,17 @@ export default function AdminDashboard() {
                   ) : formData._modelType === "settings" && modal.data.slug === "about" ? (
                       <>
                         <Field label="Story Title (Home Hero)" name="aboutOriginTitle" value={formData.aboutOriginTitle || ""} onChange={handleFormChange} />
-                        <Field label="Our Story (Intro)" name="aboutText" value={formData.aboutText || ""} onChange={handleFormChange} textarea />
                         <Field label="The Origin (Narrative)" name="aboutOriginText" value={formData.aboutOriginText || ""} onChange={handleFormChange} textarea />
+                        <ImageUpload label="About Page Image" value={formData.aboutImageUrl || ""} onChange={(value) => setFormData((current) => ({ ...current, aboutImageUrl: value }))} />
                       </>
                   ) : formData._modelType === "settings" && modal.data.slug === "contact" ? (
                       <>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                            <Field label="Email" name="contactEmail" value={formData.contactEmail || ""} onChange={handleFormChange} />
                            <Field label="Phone" name="contactPhone" value={formData.contactPhone || ""} onChange={handleFormChange} />
                         </div>
                         <Field label="Office Address" name="address" value={formData.address || ""} onChange={handleFormChange} textarea />
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                            <Field label="Office Hours" name="officeHours" value={formData.officeHours || ""} onChange={handleFormChange} />
                            <Field label="WhatsApp Number" name="whatsappNumber" value={formData.whatsappNumber || ""} onChange={handleFormChange} />
                         </div>
@@ -2292,18 +3209,18 @@ export default function AdminDashboard() {
                       <>
                         <Field label="Banner Title" name="title" value={formData.title || ""} onChange={handleFormChange} required />
                         <Field label="Subtitle" name="subtitle" value={formData.subtitle || ""} onChange={handleFormChange} textarea />
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                            <ImageUpload label="Hero Background Image" value={formData.imageUrl || ""} onChange={(v) => setFormData(p => ({ ...p, imageUrl: v }))} />
                            <ImageUpload label="Hero Background Video" value={formData.videoUrl || ""} onChange={(v) => setFormData(p => ({ ...p, videoUrl: v }))} />
                         </div>
                         <div className="pt-2">
                            <Field label="Top Badge/Tag" name="heroTag" value={formData.heroTag || ""} onChange={handleFormChange} />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                            <Field label="Button 1 Text" name="ctaText" value={formData.ctaText || ""} onChange={handleFormChange} />
                            <Field label="Button 1 Link" name="ctaLink" value={formData.ctaLink || ""} onChange={handleFormChange} />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                            <Field label="Button 2 Text" name="cta2Text" value={formData.cta2Text || ""} onChange={handleFormChange} />
                            <Field label="Button 2 Link" name="cta2Link" value={formData.cta2Link || ""} onChange={handleFormChange} />
                         </div>
@@ -2345,7 +3262,7 @@ export default function AdminDashboard() {
                       <Field label="Collab Heading" name="collabTitle" value={formData.collabTitle || ""} onChange={handleFormChange} />
                       <Field label="Collab Subtitle" name="collabSubtitle" value={formData.collabSubtitle || ""} onChange={handleFormChange} />
                       <Field label="Collab Description" name="collabDescription" value={formData.collabDescription || ""} onChange={handleFormChange} textarea />
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <Field label="CTA Button Text" name="collabCtaText" value={formData.collabCtaText || ""} onChange={handleFormChange} />
                           <Field label="CTA Button Link" name="collabCtaLink" value={formData.collabCtaLink || ""} onChange={handleFormChange} />
                       </div>
@@ -2484,13 +3401,13 @@ export default function AdminDashboard() {
                 <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 flex items-center gap-2">
                     <Star size={10} /> Collaboration Block Settings
                 </span>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                    <Field label="Block Label (e.g. Partner With Us)" name="collabTitle" value={formData.collabTitle || ""} onChange={handleFormChange} />
                    <Field label="CTA Button Text" name="collabCtaText" value={formData.collabCtaText || ""} onChange={handleFormChange} />
                 </div>
                 <Field label="Main Header" name="collabSubtitle" value={formData.collabSubtitle || ""} onChange={handleFormChange} />
                 <Field label="Short Description" name="collabDescription" value={formData.collabDescription || ""} onChange={handleFormChange} textarea />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-amber-600 uppercase tracking-wide mb-1.5">Block Background</label>
                     <div className="flex items-center gap-2">
@@ -2519,7 +3436,7 @@ export default function AdminDashboard() {
                 <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 flex items-center gap-2">
                     <Star size={10} /> 3-Image Hero Layout Assets
                 </span>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <ImageUpload label="Grid Image 2" value={formData.imageUrl2 || ""} onChange={(v) => setFormData(p => ({ ...p, imageUrl2: v }))} />
                     <Field label="Label 2" name="imageLabel2" value={formData.imageLabel2 || ""} onChange={handleFormChange} placeholder="e.g. Experience" />
@@ -2560,10 +3477,15 @@ export default function AdminDashboard() {
                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">Primary Details</span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Product Name" name="name" value={formData.name || ""} onChange={handleFormChange} required />
-                <Field label="URL Slug (unique)" name="slug" value={formData.slug || ""} onChange={handleFormChange} required />
+                <Field label="Product Name" name="name" value={formData.name || ""} onChange={handleProductNameChange} required />
+                <div className="space-y-1.5">
+                  <Field label="URL Slug (unique)" name="slug" value={formData.slug || ""} onChange={handleFormChange} required error={!!formData.slug && !formData.id && products.some(p => p.slug === formData.slug)} />
+                  {!!formData.slug && !formData.id && products.some(p => p.slug === formData.slug) && (
+                    <p className="text-[11px] font-bold text-red-500 px-1">A product with this URL slug already exists - saving will fail. Change it.</p>
+                  )}
+                </div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-1.5 px-1">Category</label>
@@ -2687,11 +3609,7 @@ export default function AdminDashboard() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Main CTA Text (e.g. Get a Quote)" name="ctaText" value={formData.ctaText || "Get a Quote"} onChange={handleFormChange} />
-                <Field label="Main CTA Link" name="ctaLink" value={formData.ctaLink || "/get-a-quote"} onChange={handleFormChange} />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Brochure Label" name="brochureText" value={formData.brochureText || "Download Brochure"} onChange={handleFormChange} />
-                <Field label="Brochure Link" name="brochureLink" value={formData.brochureLink || "#"} onChange={handleFormChange} />
+                <Field label="Main CTA Link" name="ctaLink" value={formData.ctaLink || "/quote"} onChange={handleFormChange} />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Warranty Text Override" name="warrantyText" value={formData.warrantyText || "10+ Year Warranty"} onChange={handleFormChange} />
@@ -2755,15 +3673,19 @@ export default function AdminDashboard() {
         <Modal title={formData.id ? "Edit Project" : "Add Project"} onClose={() => setModal(null)}>
           <div className="space-y-4">
             <Field label="Project Name" name="name" value={formData.name || ""} onChange={handleFormChange} required />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="City" name="city" value={formData.city || ""} onChange={handleFormChange} required />
               <Field label="State" name="state" value={formData.state || ""} onChange={handleFormChange} required />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Surface Type" name="surface" value={formData.surface || ""} onChange={handleFormChange} required />
               <Field label="Area (sqm)" name="area" value={formData.area || ""} onChange={handleFormChange} required />
             </div>
             <Field label="Year" name="year" value={formData.year || ""} onChange={handleFormChange} required />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Duration" name="duration" value={formData.duration || ""} onChange={handleFormChange} placeholder="45 Days to Handover" />
+              <Field label="Standard" name="standard" value={formData.standard || ""} onChange={handleFormChange} placeholder="International Pro Grade" />
+            </div>
             <ImageUpload label="Project Showcase Image" value={formData.imageUrl || ""} onChange={(v) => setFormData(p => ({ ...p, imageUrl: v }))} />
             <button onClick={saveProject} className="w-full bg-amber-500 hover:bg-amber-400 text-white py-3 rounded-xl font-bold transition flex items-center justify-center gap-2">
               <Save size={16} /> Save Project

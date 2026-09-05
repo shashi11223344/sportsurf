@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Search, ShoppingBag, User, Menu, X, ChevronRight, Mail, Phone, Facebook, Twitter, Youtube, Instagram, Linkedin } from "lucide-react";
+import { Search, ShoppingBag, User, Menu, X, ChevronRight, Mail, Phone, Facebook, Twitter, Youtube, Instagram, Linkedin, LogOut } from "lucide-react";
+import { socialLinks } from "@/data/socialLinks";
+import { useSession, signOut } from "next-auth/react";
 
 // Flat SVG icons for each category...
 const CategoryIcon = ({ name, iconSvg, navbarIconUrl }: { name: string; iconSvg?: string; navbarIconUrl?: string }) => {
@@ -91,8 +93,21 @@ export default function Navbar() {
   const [heroes, setHeroes] = useState<any[]>([]);
   const [categories, setCategories] = useState<{ id?: string; label: string; imageUrl?: string; icon?: string; iconSvg?: string; navbarIconUrl?: string; showOnNavbar?: boolean; href?: string; logoUrl?: string }[]>([]);
   const [tickerItems, setTickerItems] = useState<{ text: string }[]>([]);
+  const [activeQuotes, setActiveQuotes] = useState(0);
   const pathname = usePathname();
   const router = useRouter();
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    if (status !== "authenticated") {
+      setActiveQuotes(0);
+      return;
+    }
+    fetch("/api/user/activity")
+      .then(res => res.ok ? res.json() : null)
+      .then(data => setActiveQuotes(data?.stats?.activeQuotes || 0))
+      .catch(() => setActiveQuotes(0));
+  }, [status]);
 
   useEffect(() => {
     Promise.all([
@@ -124,7 +139,7 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-ag-bg border-b border-ag-border">
+    <header className="sticky top-0 z-50 bg-ag-bg border-b border-ag-border">
       {/* Top Contact Bar */}
       <div className="hidden md:block bg-ag-primary text-white py-1">
         <div className="container-retail flex justify-between items-center text-[10px] sm:text-[11px] font-body tracking-wider">
@@ -142,22 +157,22 @@ export default function Navbar() {
 
           <div className="flex items-center gap-4 lg:gap-6">
             <div className="flex items-center gap-2">
-              <a href={settings?.facebookLink || "#"} className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center hover:bg-ag-gold transition-colors">
+              <a href={settings?.facebookLink || socialLinks.facebookLink} target="_blank" rel="noreferrer" className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center hover:bg-ag-gold transition-colors">
                 <Facebook size={12} />
               </a>
-              <a href={settings?.twitterLink || "#"} className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center hover:bg-ag-gold transition-colors">
+              <a href={settings?.twitterLink || socialLinks.twitterLink} target="_blank" rel="noreferrer" className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center hover:bg-ag-gold transition-colors">
                 <Twitter size={12} />
               </a>
-              <a href={settings?.youtubeLink || "#"} className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center hover:bg-ag-gold transition-colors">
+              <a href={settings?.youtubeLink || socialLinks.youtubeLink} target="_blank" rel="noreferrer" className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center hover:bg-ag-gold transition-colors">
                 <Youtube size={12} />
               </a>
-              <a href={settings?.instagramLink || "#"} className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center hover:bg-ag-gold transition-colors">
+              <a href={settings?.instagramLink || socialLinks.instagramLink} target="_blank" rel="noreferrer" className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center hover:bg-ag-gold transition-colors">
                 <Instagram size={12} />
               </a>
-              <a href={settings?.linkedinLink || "#"} className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center hover:bg-ag-gold transition-colors">
+              <a href={settings?.linkedinLink || socialLinks.linkedinLink} target="_blank" rel="noreferrer" className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center hover:bg-ag-gold transition-colors">
                 <Linkedin size={12} />
               </a>
-              <a href={settings?.pinterestLink || "#"} className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center hover:bg-ag-gold transition-colors">
+              <a href={settings?.pinterestLink || socialLinks.pinterestLink} target="_blank" rel="noreferrer" className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center hover:bg-ag-gold transition-colors">
                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-[12px] h-[12px]">
                   <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.162-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.401.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.55.535 6.607 0 11.985-5.365 11.985-11.987C23.97 5.367 18.618 0 12.017 0z" />
                 </svg>
@@ -165,9 +180,21 @@ export default function Navbar() {
             </div>
             <span className="text-white/40">|</span>
             <div className="flex items-center gap-3">
-              <Link href="/register" className="hover:text-ag-gold font-semibold transition-colors">REGISTRATION</Link>
-              <span className="text-white/40">|</span>
-              <Link href="/login" className="hover:text-ag-gold font-semibold transition-colors">LOGIN</Link>
+              {status === "authenticated" ? (
+                <>
+                  <Link href="/profile" className="hover:text-ag-gold font-semibold transition-colors">
+                    {session.user?.name ? `HI, ${session.user.name.split(" ")[0].toUpperCase()}` : "MY ACCOUNT"}
+                  </Link>
+                  <span className="text-white/40">|</span>
+                  <button onClick={() => signOut({ callbackUrl: "/" })} className="hover:text-ag-gold font-semibold transition-colors">LOGOUT</button>
+                </>
+              ) : (
+                <>
+                  <Link href="/register" className="hover:text-ag-gold font-semibold transition-colors">REGISTRATION</Link>
+                  <span className="text-white/40">|</span>
+                  <Link href="/login" className="hover:text-ag-gold font-semibold transition-colors">LOGIN</Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -220,7 +247,7 @@ export default function Navbar() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-ag-text-muted" size={16} />
           </form>
 
-          <div className="hidden md:flex items-center gap-6 ml-auto">
+          <div className="hidden lg:flex items-center gap-6 ml-auto">
             {navLinks.filter(l => l.label.toLowerCase() !== "products").map((link) => (
               <Link
                 key={link.label}
@@ -234,22 +261,24 @@ export default function Navbar() {
               </Link>
             ))}
             <div className="h-4 w-px bg-ag-border" />
-            <Link href="/profile" className="flex flex-col items-center gap-0.5 text-ag-text-muted hover:text-ag-primary transition-colors group">
+            <Link href={status === "authenticated" ? "/profile" : "/login"} className="flex flex-col items-center gap-0.5 text-ag-text-muted hover:text-ag-primary transition-colors group">
               <User size={20} />
               <span className="text-[9px] font-body tracking-widest uppercase">Account</span>
             </Link>
-            <button className="flex flex-col items-center gap-0.5 text-ag-text-muted hover:text-ag-primary transition-colors relative">
+            <Link href={status === "authenticated" ? "/profile?tab=quotes" : "/login?redirect=/profile"} className="flex flex-col items-center gap-0.5 text-ag-text-muted hover:text-ag-primary transition-colors relative">
               <ShoppingBag size={20} />
               <span className="text-[9px] font-body tracking-widest uppercase">Quote</span>
-              <span className="absolute -top-1 -right-2 bg-ag-secondary text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">0</span>
-            </button>
+              {activeQuotes > 0 && (
+                <span className="absolute -top-1 -right-2 bg-ag-secondary text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">{activeQuotes}</span>
+              )}
+            </Link>
             <Link href="/quote" className="btn btn-gold px-5 py-2 text-[11px] rounded-none ml-2">
               GET A QUOTE →
             </Link>
           </div>
 
           {/* Mobile menu toggle */}
-          <button className="md:hidden text-ag-text ml-auto" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+          <button className="lg:hidden text-ag-text ml-auto" onClick={() => setIsMenuOpen(!isMenuOpen)}>
             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
@@ -260,16 +289,16 @@ export default function Navbar() {
         <div className="bg-white border-b border-ag-border shadow-sm">
           <div className="container-retail">
             {/* Desktop View: Horizontal Scroll */}
-            <div className="hidden md:flex items-center justify-between py-3 overflow-x-auto scrollbar-hide gap-2">
+            <div className="hidden md:flex items-center justify-start xl:justify-center py-3 overflow-x-auto scrollbar-hide">
                {categories.map((cat, i) => {
                  const catHref = cat.href || `/${cat.label.toLowerCase().replace(/\s+/g, "-")}`;
                  const isActive = pathname === catHref;
-                 
+
                  return (
                   <Link
-                    key={cat.label}
+                    key={cat.id || cat.href || cat.label}
                     href={catHref}
-                    className={`group flex flex-col items-center gap-1.5 px-5 py-2.5 min-w-fit transition-all duration-300 relative ${
+                    className={`group flex flex-col items-center gap-1.5 px-2.5 py-2.5 min-w-fit shrink-0 transition-all duration-300 relative ${
                       isActive ? "bg-black/5" : "hover:bg-black/5"
                     }`}
                   >
@@ -297,7 +326,7 @@ export default function Navbar() {
                  
                  return (
                   <Link
-                    key={cat.label}
+                    key={cat.id || cat.href || cat.label}
                     href={catHref}
                     className={`flex flex-col items-center gap-2.5 transition-all duration-300 ${
                       isActive ? "text-ag-primary" : "text-black"
@@ -348,7 +377,7 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden bg-white border-t border-ag-border fixed inset-x-0 bottom-0 top-[112px] z-[100] overflow-y-auto">
+        <div className="lg:hidden bg-white border-t border-ag-border fixed inset-x-0 bottom-0 top-16 md:top-24 z-[100] overflow-y-auto">
           <div className="p-4 space-y-3">
             {navLinks.filter(l => l.label.toLowerCase() !== "products").map((link) => (
               <Link
@@ -361,6 +390,71 @@ export default function Navbar() {
                 <ChevronRight size={16} className="text-ag-text-muted" />
               </Link>
             ))}
+
+            <Link
+              href={status === "authenticated" ? "/profile" : "/login"}
+              className="flex items-center justify-between py-3 px-4 bg-ag-bg-alt rounded-lg text-[13px] font-body font-bold text-ag-primary uppercase tracking-wider"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Account
+              <ChevronRight size={16} className="text-ag-text-muted" />
+            </Link>
+            {status === "authenticated" ? (
+              <button
+                className="flex items-center justify-between w-full py-3 px-4 bg-ag-bg-alt rounded-lg text-[13px] font-body font-bold text-ag-primary uppercase tracking-wider"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  signOut({ callbackUrl: "/" });
+                }}
+              >
+                Logout
+                <LogOut size={16} className="text-ag-text-muted" />
+              </button>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="flex items-center justify-between py-3 px-4 bg-ag-bg-alt rounded-lg text-[13px] font-body font-bold text-ag-primary uppercase tracking-wider"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Login
+                  <ChevronRight size={16} className="text-ag-text-muted" />
+                </Link>
+                <Link
+                  href="/register"
+                  className="flex items-center justify-between py-3 px-4 bg-ag-bg-alt rounded-lg text-[13px] font-body font-bold text-ag-primary uppercase tracking-wider"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Registration
+                  <ChevronRight size={16} className="text-ag-text-muted" />
+                </Link>
+              </>
+            )}
+
+            <div className="pt-3 mt-3 border-t border-ag-border space-y-3">
+              <a href="mailto:info@sportsurf.in" className="flex items-center gap-3 py-2 px-4 text-[13px] font-body text-ag-text-muted">
+                <Mail size={16} />
+                <span>info@sportsurf.in</span>
+              </a>
+              <a href="tel:+919966109191" className="flex items-center gap-3 py-2 px-4 text-[13px] font-body text-ag-text-muted">
+                <Phone size={16} />
+                <span>+91 9966109191</span>
+              </a>
+              <div className="flex items-center gap-3 px-4 pt-1">
+                <a href={settings?.facebookLink || socialLinks.facebookLink} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-full bg-ag-bg-alt flex items-center justify-center text-ag-text-muted hover:bg-ag-gold hover:text-white transition-colors">
+                  <Facebook size={14} />
+                </a>
+                <a href={settings?.twitterLink || socialLinks.twitterLink} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-full bg-ag-bg-alt flex items-center justify-center text-ag-text-muted hover:bg-ag-gold hover:text-white transition-colors">
+                  <Twitter size={14} />
+                </a>
+                <a href={settings?.instagramLink || socialLinks.instagramLink} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-full bg-ag-bg-alt flex items-center justify-center text-ag-text-muted hover:bg-ag-gold hover:text-white transition-colors">
+                  <Instagram size={14} />
+                </a>
+                <a href={settings?.linkedinLink || socialLinks.linkedinLink} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-full bg-ag-bg-alt flex items-center justify-center text-ag-text-muted hover:bg-ag-gold hover:text-white transition-colors">
+                  <Linkedin size={14} />
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       )}

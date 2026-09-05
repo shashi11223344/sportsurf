@@ -22,6 +22,11 @@ export const metadata: Metadata = {
   title: "SportSurf India — Sports Surfaces & Infrastructure",
   description: "India's leading sports surface and infrastructure company. Specializing in surface sports, water sports, sports academies, and play zones.",
   keywords: ["synthetic turf India", "sports infrastructure India", "sports academies India"],
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/logo.png",
+  },
 };
 
 export const viewport: Viewport = {

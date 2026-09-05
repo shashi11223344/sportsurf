@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-1.0.x"]
 }
 
 datasource db {
@@ -77,11 +78,18 @@ model SiteSettings {
   aboutOriginText  String? @default("Today, \"Antigravity\" represents our next evolution — a commitment to physics-driven design that minimizes injury risk and maximizes performance potential.")
   aboutOriginTitle String? @default("THE ORIGIN")
   aboutText        String? @default("Founded in 2013, SportSurf was born from a singular vision: to bring world-class athletic infrastructure to India.")
+  aboutImageUrl    String?
   officeHours      String? @default("Mon - Sat: 9:00 AM - 7:00 PM")
   serviceArea      String? @default("Pan India Service Availability")
   timelineJson     String? @default("[]")
   valuesJson       String? @default("[]")
   whatsappNumber   String? @default("+91800SPORTSURF")
+  facebookLink     String?
+  twitterLink      String?
+  instagramLink    String?
+  linkedinLink     String?
+  youtubeLink      String?
+  pinterestLink    String?
 }
 
 model TickerUpdate {
@@ -100,7 +108,7 @@ model Category {
   href              String?
   order             Int             @default(0)
   imageUrl          String?
-  collabCtaLink     String?         @default("/contact")
+  collabCtaLink     String?         @default("/partner")
   collabCtaText     String?         @default("Apply Now")
   collabDescription String?         @default("We are looking for strategic partners in infrastructure and technology.")
   collabSubtitle    String?         @default("Join the SportSurf Elite Network")
@@ -112,6 +120,7 @@ model Category {
   heroTag           String?         @default("Infrastructure")
   videoUrl          String?
   backgroundColor   String?         @default("#0f172a")
+  textColor         String?         @default("#0f172a")
   imageUrl2         String?         @default("https://images.unsplash.com/photo-1541252260730-0412e3e2108e?auto=format&fit=crop&q=80&w=400")
   imageLabel2       String?         @default("Experience")
   imageUrl3         String?         @default("https://images.unsplash.com/photo-1504450758481-7338eba7524a?auto=format&fit=crop&q=80&w=400")
@@ -210,7 +219,7 @@ model Product {
   
   // New Inner Page Customization Fields
   ctaText             String?      @default("Get a Quote")
-  ctaLink             String?      @default("/get-a-quote")
+  ctaLink             String?      @default("/quote")
   brochureText        String?      @default("Download Brochure")
   brochureLink        String?      @default("#")
   warrantyText        String?      @default("10+ Year Warranty")
@@ -227,6 +236,8 @@ model Project {
   surface    String
   area       String
   year       String
+  duration   String?  @default("45 Days to Handover")
+  standard   String?  @default("International Pro Grade")
   imageUrl   String?
   isFeatured Boolean  @default(false)
   createdAt  DateTime @default(now())

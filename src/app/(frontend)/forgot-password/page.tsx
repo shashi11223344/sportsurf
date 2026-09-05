@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Mail, ArrowLeft, KeyRound, CheckCircle2, AlertCircle } from "lucide-react";
+import PageHeader from "@/components/ui/PageHeader";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -46,12 +47,16 @@ export default function ForgotPasswordPage() {
                 <div className="w-16 h-16 bg-ag-primary/5 border border-ag-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
                    <KeyRound size={28} className="text-ag-primary" />
                 </div>
-                <h1 className="font-heading font-extrabold text-3xl text-ag-text uppercase tracking-tight">
-                  Reset <span className="text-ag-primary">Password</span>
-                </h1>
-                <p className="font-body text-ag-text-muted mt-4 text-sm leading-relaxed">
-                  Enter your registered email and we&apos;ll send you a secure link to reset your password.
-                </p>
+                <PageHeader
+                  page="forgot-password"
+                  defaultTag=""
+                  defaultTitle={<>Reset <span className="text-ag-primary">Password</span></>}
+                  defaultSubtitle="Enter your registered email and we'll send you a secure link to reset your password."
+                  align="center"
+                  titleClassName="font-heading font-extrabold text-3xl text-ag-text uppercase tracking-tight"
+                  wrapperClassName=""
+                  subtitleClassName="font-body text-ag-text-muted mt-4 text-sm leading-relaxed"
+                />
               </div>
 
               <div className="retail-card p-8 md:p-10">

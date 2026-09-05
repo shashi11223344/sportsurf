@@ -138,6 +138,12 @@ async function main() {
       siteName: "SPORTSURF",
       contactEmail: "info@sportsurf.in",
       contactPhone: "+91 9966109191",
+      facebookLink: "https://www.facebook.com/schoolmart.in/",
+      twitterLink: "https://x.com/schoolmartindia",
+      instagramLink: "https://www.instagram.com/schoolmart.in/",
+      linkedinLink: "https://www.linkedin.com/school/13397648/admin/inbox/thread/2-YTIyNjJhZTMtZDRhOS00OWJmLWE2YTEtMzU2MWQ4OTc0ZTg2XzEwMA==/",
+      youtubeLink: "https://www.youtube.com/@schoolinnovationindia",
+      pinterestLink: "https://in.pinterest.com/schoolmartindia/",
       aboutText: "Founded in 2013, SportSurf was born from a singular vision: to bring world-class athletic infrastructure to India.",
       aboutOriginTitle: "THE ORIGIN",
       aboutOriginText: "Today, \"Antigravity\" represents our next evolution — a commitment to physics-driven design that minimizes injury risk and maximizes performance potential.",
@@ -156,6 +162,12 @@ async function main() {
       siteName: "SPORTSURF",
       contactEmail: "info@sportsurf.in",
       contactPhone: "+91 9966109191",
+      facebookLink: "https://www.facebook.com/schoolmart.in/",
+      twitterLink: "https://x.com/schoolmartindia",
+      instagramLink: "https://www.instagram.com/schoolmart.in/",
+      linkedinLink: "https://www.linkedin.com/school/13397648/admin/inbox/thread/2-YTIyNjJhZTMtZDRhOS00OWJmLWE2YTEtMzU2MWQ4OTc0ZTg2XzEwMA==/",
+      youtubeLink: "https://www.youtube.com/@schoolinnovationindia",
+      pinterestLink: "https://in.pinterest.com/schoolmartindia/",
     }
   });
 

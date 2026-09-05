@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   try {
     const { 
       label, order, description, icon, iconSvg, navbarIconUrl, imageUrl, href,
-      backgroundColor, heroTag, ctaText, ctaLink, cta2Text, cta2Link,
+      backgroundColor, textColor, heroTag, ctaText, ctaLink, cta2Text, cta2Link,
       imageUrl2, imageLabel2, imageUrl3, imageLabel3,
       collabTitle, collabSubtitle, collabDescription, collabCtaText, collabCtaLink,
       logoUrl, collabBackgroundColor, collabTextColor
@@ -48,6 +48,7 @@ export async function POST(req: Request) {
         cta2Text,
         cta2Link,
         backgroundColor,
+        textColor,
         imageUrl2,
         imageLabel2,
         imageUrl3,

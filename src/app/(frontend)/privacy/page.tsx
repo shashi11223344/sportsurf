@@ -1,9 +1,63 @@
-"use client";
-
-import { Section } from "@/components/ui/Section";
+import { prisma } from "@/lib/prisma";
 import { ShieldCheck, Lock, Eye, FileText } from "lucide-react";
 
-export default function PrivacyPage() {
+export const dynamic = "force-dynamic";
+
+export default async function PrivacyPage() {
+  const settings = await prisma.siteSettings.findFirst() || {
+    privacyIntro: "At SportSurf Antigravity, we prioritize the protection of your intellectual property and project data.",
+    privacySectionsJson: "[]",
+  } as any;
+
+  let sections = [] as any[];
+  try {
+    sections = JSON.parse(settings.privacySectionsJson || "[]");
+  } catch {
+    sections = [];
+  }
+
+  if (sections.length === 0) {
+    sections = [
+      {
+        id: "overview",
+        title: "1. Data Stewardship",
+        icon: "ShieldCheck",
+        body: [
+          "SportSurf (\"we\", \"our\", or \"us\") operates the Antigravity platform. This policy informs you of our practices regarding the collection, use, and disclosure of personal data when you use our Service.",
+          "We use your data to provide and improve the Service. By using the Service, you agree to the collection and use of information in accordance with this policy."
+        ],
+        list: []
+      },
+      {
+        id: "data-collection",
+        title: "2. Information Collection",
+        icon: "Lock",
+        body: [
+          "While using our Service, we may ask you to provide us with certain personally identifiable information that can be used to contact or identify you (\"Personal Data\")."
+        ],
+        list: [
+          "Email address",
+          "First name and last name",
+          "Phone number",
+          "Address, State, Province, ZIP/Postal code, City",
+          "Project site coordinates and dimensions"
+        ]
+      },
+      {
+        id: "security",
+        title: "3. Data Security",
+        icon: "Eye",
+        body: [
+          "The security of your data is important to us but remember that no method of transmission over the Internet or method of electronic storage is 100% secure.",
+          "We strive to use commercially acceptable means to protect your Personal Data, including SSL encryption and restricted database access for mission-critical infrastructure data."
+        ],
+        list: []
+      }
+    ];
+  }
+
+  const IconMap: any = { ShieldCheck, Lock, Eye, FileText };
+
   return (
     <div className="pt-12     bg-ag-bg min-h-screen  pb-32">
       <div className="container-retail">
@@ -14,7 +68,7 @@ export default function PrivacyPage() {
               Privacy <span className="text-ag-primary">Policy</span>
             </h1>
             <p className="font-body text-ag-text-muted mt-6 text-lg max-w-2xl">
-              At SportSurf Antigravity, we prioritize the protection of your intellectual property and project data.
+              {settings.privacyIntro}
             </p>
           </div>
 
@@ -35,54 +89,29 @@ export default function PrivacyPage() {
             </div>
 
             <div className="lg:col-span-3 space-y-16">
-              <section id="overview" className="space-y-6">
-                <h2 className="font-heading font-bold text-2xl text-ag-text uppercase tracking-tight flex items-center gap-3">
-                   <ShieldCheck className="text-ag-primary" size={24} />
-                   1. Data Stewardship
-                </h2>
-                <div className="font-body text-ag-text-muted text-base leading-relaxed space-y-4">
-                  <p>
-                    SportSurf ("we", "our", or "us") operates the Antigravity platform. This policy informs you of our practices regarding the collection, use, and disclosure of personal data when you use our Service.
-                  </p>
-                  <p>
-                    We use your data to provide and improve the Service. By using the Service, you agree to the collection and use of information in accordance with this policy.
-                  </p>
-                </div>
-              </section>
-
-              <section id="data-collection" className="space-y-6">
-                <h2 className="font-heading font-bold text-2xl text-ag-text uppercase tracking-tight flex items-center gap-3">
-                   <Lock className="text-ag-primary" size={24} />
-                   2. Information Collection
-                </h2>
-                <div className="font-body text-ag-text-muted text-base leading-relaxed space-y-4">
-                  <p>
-                    While using our Service, we may ask you to provide us with certain personally identifiable information that can be used to contact or identify you ("Personal Data").
-                  </p>
-                  <ul className="list-disc pl-5 space-y-2">
-                     <li>Email address</li>
-                     <li>First name and last name</li>
-                     <li>Phone number</li>
-                     <li>Address, State, Province, ZIP/Postal code, City</li>
-                     <li>Project site coordinates and dimensions</li>
-                  </ul>
-                </div>
-              </section>
-
-              <section id="security" className="space-y-6">
-                <h2 className="font-heading font-bold text-2xl text-ag-text uppercase tracking-tight flex items-center gap-3">
-                   <Eye className="text-ag-primary" size={24} />
-                   3. Data Security
-                </h2>
-                <div className="font-body text-ag-text-muted text-base leading-relaxed space-y-4">
-                  <p>
-                    The security of your data is important to us but remember that no method of transmission over the Internet or method of electronic storage is 100% secure.
-                  </p>
-                  <p>
-                    We strive to use commercially acceptable means to protect your Personal Data, including SSL encryption and restricted database access for mission-critical infrastructure data.
-                  </p>
-                </div>
-              </section>
+              {sections.map((section: any, index: number) => {
+                const Icon = IconMap[section.icon] || FileText;
+                return (
+                  <section key={section.id || index} id={section.id || `section-${index}`} className="space-y-6">
+                    <h2 className="font-heading font-bold text-2xl text-ag-text uppercase tracking-tight flex items-center gap-3">
+                       <Icon className="text-ag-primary" size={24} />
+                       {section.title}
+                    </h2>
+                    <div className="font-body text-ag-text-muted text-base leading-relaxed space-y-4">
+                      {(section.body || []).map((paragraph: string, pIndex: number) => (
+                        <p key={`${section.id}-p-${pIndex}`}>{paragraph}</p>
+                      ))}
+                      {section.list && section.list.length > 0 && (
+                        <ul className="list-disc pl-5 space-y-2">
+                          {section.list.map((item: string, itemIndex: number) => (
+                            <li key={`${section.id}-li-${itemIndex}`}>{item}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </section>
+                );
+              })}
 
               <div className="p-8 bg-ag-bg-alt border border-ag-border rounded-2xl flex gap-6 items-start">
                  <div className="p-3 bg-ag-primary/10 rounded-xl text-ag-primary shrink-0">

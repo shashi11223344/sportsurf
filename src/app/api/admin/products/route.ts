@@ -33,6 +33,9 @@ export async function POST(req: NextRequest) {
      return NextResponse.json(product);
   } catch (err: any) {
      console.error("Product create error:", err);
+     if (err.code === "P2002") {
+        return NextResponse.json({ error: `A product with this URL slug already exists. Please choose a different slug.` }, { status: 409 });
+     }
      return NextResponse.json({ error: err.message || "Failed to create product" }, { status: 500 });
   }
 }

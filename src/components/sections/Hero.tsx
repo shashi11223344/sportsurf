@@ -1,9 +1,14 @@
 "use client";
 
-export default function Hero({ hero }: { hero?: any }) {
+export default function Hero({ hero, settings }: { hero?: any; settings?: any }) {
   const data = hero || {
-    title: "YOUR COMPLETE GUIDE TO",
-    subtitle: "SPORTS INFRASTRUCTURE",
+    title: settings?.homeHeroTitle || "YOUR COMPLETE GUIDE TO",
+    subtitle: settings?.homeHeroSubtitle || "SPORTS INFRASTRUCTURE",
+    heroTag: settings?.homeHeroTag || "Premium Sports Infrastructure",
+    ctaText: settings?.homeHeroPrimaryButtonText || "Get a quote",
+    ctaLink: settings?.homeHeroPrimaryButtonLink || "/contact",
+    cta2Text: settings?.homeHeroSecondaryButtonText || "Explore Solutions",
+    cta2Link: settings?.homeHeroSecondaryButtonLink || "/products",
     imageUrl: "https://images.unsplash.com/photo-1541252260737-fb427fbf930b?q=80&w=2500&auto=format&fit=crop"
   };
 

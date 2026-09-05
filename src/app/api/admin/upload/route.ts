@@ -25,11 +25,36 @@ export async function POST(req: NextRequest) {
         const { writeFile, mkdir } = await import("fs/promises");
         const { join } = await import("path");
         const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
+        let buffer = Buffer.from(bytes);
         const uploadDir = join(process.cwd(), "public", "uploads");
         try { await mkdir(uploadDir, { recursive: true }); } catch { }
         const uniqueId = Date.now() + "-" + Math.random().toString(36).substring(2, 9);
-        const ext = file.name.split(".").pop();
+        const isImage = file.type.startsWith("image/");
+        let ext = file.name.split(".").pop() || "";
+
+        // Mirror the Cloudinary transform (resize + compress) so local dev
+        // doesn't end up serving multi-MB raw camera photos on every page.
+        if (isImage) {
+          try {
+            const sharp = (await import("sharp")).default;
+            const lowerExt = ext.toLowerCase();
+            const resized = sharp(buffer, { animated: lowerExt === "gif" })
+              .resize({ width: 1800, height: 1800, fit: "inside", withoutEnlargement: true });
+
+            // PNG/GIF may carry transparency - keep it. Everything else -> jpeg.
+            if (lowerExt === "png") {
+              buffer = await resized.png({ quality: 80, compressionLevel: 9 }).toBuffer();
+            } else if (lowerExt === "gif") {
+              buffer = await resized.gif().toBuffer();
+            } else {
+              buffer = await resized.jpeg({ quality: 80 }).toBuffer();
+              ext = "jpg";
+            }
+          } catch (compressErr) {
+            console.error("LOCAL_IMAGE_COMPRESS_ERROR:", compressErr);
+          }
+        }
+
         const fileName = `${uniqueId}.${ext}`;
         await writeFile(join(uploadDir, fileName), buffer);
         return NextResponse.json({ url: `/uploads/${fileName}` });
@@ -58,7 +83,14 @@ export async function POST(req: NextRequest) {
         {
           folder: "sportsurf",
           resource_type: resourceType,
-          transformation: resourceType === 'image' ? [{ quality: 'auto' }] : []
+          transformation: resourceType === 'image' ? [
+            { width: 1800, height: 1800, crop: "limit" },
+            { quality: "auto:good" },
+            { fetch_format: "auto" }
+          ] : [
+            { quality: "auto:good" },
+            { fetch_format: "auto" }
+          ]
         },
         (error, result) => {
           if (error) {

@@ -160,7 +160,7 @@ export default async function FeaturedProductsGrid({ categories = [] }: { catego
                 href: items[2].href || `/${items[2].label.toLowerCase().replace(/\s+/g, "-")}`, 
                 count: `${items[2].productCount || 0} ${items[2].productCount === 1 ? 'Product' : 'Products'}`
               }} 
-              className="col-span-6 md:col-span-3 row-span-1 h-[200px] md:h-auto" 
+              className="col-span-12 sm:col-span-6 md:col-span-3 row-span-1 h-[200px] md:h-auto"
             />
           )}
 
@@ -173,7 +173,7 @@ export default async function FeaturedProductsGrid({ categories = [] }: { catego
                 href: items[3].href || `/${items[3].label.toLowerCase().replace(/\s+/g, "-")}`, 
                 count: `${items[3].productCount || 0} ${items[3].productCount === 1 ? 'Product' : 'Products'}`
               }} 
-              className="col-span-6 md:col-span-3 row-span-1 h-[200px] md:h-auto" 
+              className="col-span-12 sm:col-span-6 md:col-span-3 row-span-1 h-[200px] md:h-auto"
             />
           )}
 

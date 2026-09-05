@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { User, Settings, Package, Bell, LogOut, ChevronRight, CircleUser } from "lucide-react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
-export default function ProfilePage() {
+function ProfilePageContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("Dashboard");
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") === "quotes" ? "Project Quotes" : "Dashboard");
   const [userActivity, setUserActivity] = useState<any[]>([]);
   const [userStats, setUserStats] = useState({ activeQuotes: 0, siteVisits: 0, serviceRequests: 0 });
   const [loadingActivity, setLoadingActivity] = useState(true);
@@ -48,7 +49,7 @@ export default function ProfilePage() {
   const tabs = [
     { label: "Dashboard", icon: <User size={18} /> },
     { label: "Project Quotes", icon: <Package size={18} />, count: userStats.activeQuotes > 0 ? userStats.activeQuotes : undefined },
-    { label: "Notifications", icon: <Bell size={18} />, count: userStats.siteVisits > 0 ? userStats.siteVisits : undefined },
+      { label: "Notifications", icon: <Bell size={18} />, count: userActivity.length > 0 ? userActivity.length : undefined },
     { label: "Account Settings", icon: <Settings size={18} /> },
   ];
 
@@ -62,7 +63,7 @@ export default function ProfilePage() {
             </div>
             <div className="text-center md:text-left space-y-1">
                <h1 className="font-heading font-black text-3xl md:text-5xl text-ag-text uppercase tracking-tight leading-none">
-                 My <span className="text-ag-primary">Antigravity</span>
+                 {session.user?.name || "My Profile"}
                </h1>
                <p className="font-body text-ag-text-muted text-sm font-bold uppercase tracking-widest">
                  {session.user?.name || "User"} • {session.user?.email}
@@ -146,15 +147,34 @@ export default function ProfilePage() {
                )}
 
                {activeTab === "Project Quotes" && (
-                  <div className="retail-card">
+                  <div className="retail-card overflow-hidden">
                      <div className="p-6 border-b border-ag-border bg-ag-bg-alt/30">
                         <h3 className="font-heading font-black text-xs uppercase tracking-widest text-ag-text">Project Quotes</h3>
                      </div>
-                     <div className="p-12 text-center flex flex-col items-center justify-center">
-                        <Package size={48} className="text-ag-text-muted/30 mb-4" />
-                        <h4 className="font-body font-bold text-sm text-ag-text">No Active Quotes</h4>
-                        <p className="font-body text-ag-text-muted text-xs mt-1">Submit a request to initialize flat map triggers flawlessly.</p>
-                     </div>
+                     {userActivity.length > 0 ? (
+                       <div className="divide-y divide-ag-border">
+                          {userActivity.map((request) => (
+                            <div key={request.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-ag-bg-alt/20 transition-colors">
+                               <div className="space-y-1">
+                                  <p className="text-sm font-bold text-ag-text line-clamp-1">{request.surface || "Quote Request"}</p>
+                                  <p className="text-[11px] text-ag-text-muted font-medium uppercase tracking-wide">{request.city || "General Inquiry"}</p>
+                               </div>
+                               <div className="flex items-center gap-8">
+                                  <div className="text-right">
+                                     <span className={`text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter ${request.status === 'pending' ? 'bg-amber-100 text-amber-700' : request.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-ag-primary/10 text-ag-primary'}`}>{request.status}</span>
+                                     <p className="text-[9px] text-ag-text-muted font-bold mt-1 uppercase">{new Date(request.createdAt).toLocaleDateString()}</p>
+                                  </div>
+                               </div>
+                            </div>
+                          ))}
+                       </div>
+                     ) : (
+                       <div className="p-12 text-center flex flex-col items-center justify-center">
+                          <Package size={48} className="text-ag-text-muted/30 mb-4" />
+                          <h4 className="font-body font-bold text-sm text-ag-text">No Project Quotes</h4>
+                          <p className="font-body text-ag-text-muted text-xs mt-1">Your submitted requests will appear here.</p>
+                       </div>
+                     )}
                   </div>
                )}
 
@@ -164,18 +184,21 @@ export default function ProfilePage() {
                         <h3 className="font-heading font-black text-xs uppercase tracking-widest text-ag-text">Notifications</h3>
                      </div>
                      <div className="divide-y divide-ag-border">
-                        {[
-                          { title: "Quote Updated", desc: "Your request for Gurgaon Stadium has been updated.", date: "2 Hours Ago" },
-                          { title: "Site Visit Confirmed", desc: "Consultation scheduled for tomorrow 11:30 AM.", date: "Yesterday" }
-                        ].map((n, i) => (
-                           <div key={i} className="p-6 hover:bg-ag-bg-alt/10 transition-colors flex justify-between items-start gap-4">
+                        {userActivity.length > 0 ? userActivity.map((request) => (
+                           <div key={request.id} className="p-6 hover:bg-ag-bg-alt/10 transition-colors flex justify-between items-start gap-4">
                               <div className="space-y-1">
-                                 <p className="text-sm font-bold text-ag-text">{n.title}</p>
-                                 <p className="text-xs text-ag-text-muted">{n.desc}</p>
+                                 <p className="text-sm font-bold text-ag-text">{request.surface || "Service Request"}</p>
+                                 <p className="text-xs text-ag-text-muted">{request.message}</p>
                               </div>
-                              <span className="text-[9px] font-black text-ag-primary uppercase shrink-0">{n.date}</span>
+                              <span className="text-[9px] font-black text-ag-primary uppercase shrink-0">
+                                {new Date(request.createdAt).toLocaleDateString()}
+                              </span>
                            </div>
-                        ))}
+                        )) : (
+                           <div className="p-12 text-center text-ag-text-muted text-xs font-bold uppercase tracking-widest italic">
+                              No notifications found.
+                           </div>
+                        )}
                      </div>
                   </div>
                )}
@@ -209,5 +232,17 @@ export default function ProfilePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={
+      <div className="pt-12 min-h-screen bg-ag-bg flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-ag-primary border-t-transparent animate-spin"></div>
+      </div>
+    }>
+      <ProfilePageContent />
+    </Suspense>
   );
 }

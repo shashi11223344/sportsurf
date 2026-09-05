@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import PageHeader from "@/components/ui/PageHeader";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -42,14 +43,17 @@ export default function LoginPage() {
     <div className="pt-12     bg-ag-bg min-h-screen  pb-32"> {/* Reduced pt from 64 to 32 */}
       <div className="container-retail">
         <div className="max-w-md mx-auto">
-          <div className="text-center mb-10">
-            <span className="text-ag-primary font-extrabold text-[11px] uppercase tracking-widest">Access Portal</span>
-            <h1 className="font-heading font-extrabold text-4xl text-ag-text uppercase tracking-tight mt-2">
-              Welcome <span className="text-ag-primary">Back</span>
-            </h1>
-            <p className="font-body text-ag-text-muted mt-4 text-sm">
-              Log in to manage your projects and service requests.
-            </p>
+          <div className="mb-10">
+            <PageHeader
+              page="login"
+              defaultTag="Access Portal"
+              defaultTitle={<>Welcome <span className="text-ag-primary">Back</span></>}
+              defaultSubtitle="Log in to manage your projects and service requests."
+              align="center"
+              titleClassName="font-heading font-extrabold text-4xl text-ag-text uppercase tracking-tight mt-2"
+              wrapperClassName=""
+              subtitleClassName="font-body text-ag-text-muted mt-4 text-sm"
+            />
           </div>
 
           <div className="retail-card p-8 md:p-10">

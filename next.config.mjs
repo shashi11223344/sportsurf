@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
+
 const nextConfig = {
-  // Remove standalone for better compatibility with Vercel/Railway default start
+  output: 'standalone',
+
   images: {
     remotePatterns: [
       {
@@ -12,6 +14,11 @@ const nextConfig = {
         hostname: 'images.unsplash.com',
       },
     ],
+  },
+
+  onDemandEntries: {
+    maxInactiveAge: 60 * 60 * 1000,
+    pagesBufferLength: 30,
   },
 };
 

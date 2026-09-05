@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body {
+  overflow-x: hidden;
+}
+
 :root {
   /* Deep Navy Primary */
   --ag-primary: 11 30 62;
@@ -128,6 +132,17 @@
 }
 .img-overlay-card:hover img {
   transform: scale(1.07);
+}
+
+/* Hide scrollbar but keep native scroll (used for horizontal-scroll strips) */
+.scrollbar-hide,
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Subtle reveal */

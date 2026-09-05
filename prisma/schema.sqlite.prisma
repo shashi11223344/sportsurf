@@ -1,0 +1,275 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/@prisma/client-sqlite"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  name               String?
+  email              String?   @unique
+  emailVerified      DateTime?
+  password           String?
+  image              String?
+  role               String    @default("USER")
+  resetToken         String?
+  resetTokenExpiry   DateTime?
+  accounts           Account[]
+  sessions           Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model SiteSettings {
+  id               String  @id @default("global")
+  siteName         String  @default("SPORTSURF")
+  logoUrl          String?
+  primaryColor     String  @default("#6366f1")
+  secondaryColor   String  @default("#f59e0b")
+  fontHeading      String  @default("Inter")
+  fontBody         String  @default("Inter")
+  contactEmail     String?
+  contactPhone     String?
+  address          String?
+  showCategoryBar  Boolean @default(true)
+  showTicker       Boolean @default(true)
+  statsJson        String? @default("[]")
+  certsJson        String? @default("[]")
+  ctaTitle         String? @default("Ready to build your dream stadium?")
+  ctaSubtitle      String? @default("Contact us to get a complete guide & quote.")
+  ctaButton        String? @default("GET A QUOTE")
+  ctaLink          String? @default("/contact")
+  aboutOriginText  String? @default("Today, \"Antigravity\" represents our next evolution — a commitment to physics-driven design that minimizes injury risk and maximizes performance potential.")
+  aboutOriginTitle String? @default("THE ORIGIN")
+  aboutText        String? @default("Founded in 2013, SportSurf was born from a singular vision: to bring world-class athletic infrastructure to India.")
+  aboutImageUrl    String?
+  officeHours      String? @default("Mon - Sat: 9:00 AM - 7:00 PM")
+  serviceArea      String? @default("Pan India Service Availability")
+  timelineJson     String? @default("[]")
+  valuesJson       String? @default("[]")
+  whatsappNumber   String? @default("+91800SPORTSURF")
+  facebookLink     String?
+  twitterLink      String?
+  instagramLink    String?
+  linkedinLink     String?
+  youtubeLink      String?
+  pinterestLink    String?
+}
+
+model TickerUpdate {
+  id    String @id @default(cuid())
+  text  String
+  order Int    @default(0)
+}
+
+model Category {
+  id                String          @id @default(cuid())
+  label             String          @unique
+  description       String?
+  icon              String?         @default("default")
+  iconSvg           String?
+  navbarIconUrl     String?
+  href              String?
+  order             Int             @default(0)
+  imageUrl          String?
+  collabCtaLink     String?         @default("/partner")
+  collabCtaText     String?         @default("Apply Now")
+  collabDescription String?         @default("We are looking for strategic partners in infrastructure and technology.")
+  collabSubtitle    String?         @default("Join the SportSurf Elite Network")
+  collabTitle       String?         @default("Partner With Us")
+  cta2Link          String?         @default("/contact")
+  cta2Text          String?         @default("Talk to Expert")
+  ctaLink           String?         @default("#specs")
+  ctaText           String?         @default("View Specs")
+  heroTag           String?         @default("Infrastructure")
+  videoUrl          String?
+  backgroundColor   String?         @default("#0f172a")
+  textColor         String?         @default("#0f172a")
+  imageUrl2         String?         @default("https://images.unsplash.com/photo-1541252260730-0412e3e2108e?auto=format&fit=crop&q=80&w=400")
+  imageLabel2       String?         @default("Experience")
+  imageUrl3         String?         @default("https://images.unsplash.com/photo-1504450758481-7338eba7524a?auto=format&fit=crop&q=80&w=400")
+  imageLabel3       String?         @default("Technical")
+  logoUrl           String?
+  collabBackgroundColor String?     @default("#0f172a")
+  collabTextColor       String?     @default("#ffffff")
+  collaborations    Collaboration[]
+  subCategories     SubCategory[]
+}
+
+model Collaboration {
+  id          String    @id @default(cuid())
+  name        String
+  imageUrl    String
+  description String?
+  href        String?
+  categoryId  String?
+  isGlobal    Boolean   @default(true)
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  category    Category? @relation(fields: [categoryId], references: [id])
+}
+
+model SubCategory {
+  id         String    @id @default(cuid())
+  name       String
+  categoryId String
+  order      Int       @default(0)
+  products   Product[]
+  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([name, categoryId])
+}
+
+model HomepageGridItem {
+  id          String  @id @default(cuid())
+  label       String  @unique
+  description String?
+  imageUrl    String?
+  href        String?
+  order       Int     @default(0)
+}
+
+model NavigationItem {
+  id       String           @id @default(cuid())
+  label    String
+  href     String
+  order    Int              @default(0)
+  parentId String?
+  parent   NavigationItem?  @relation("NavHierarchy", fields: [parentId], references: [id])
+  children NavigationItem[] @relation("NavHierarchy")
+}
+
+model HeroSection {
+  id              String  @id @default(cuid())
+  page            String  @unique
+  title           String
+  subtitle        String?
+  imageUrl        String?
+  ctaText         String?
+  ctaLink         String?
+  textColor       String  @default("#ffffff")
+  overlayOpacity  Float   @default(0.4)
+  cta2Link        String?
+  cta2Text        String?
+  heroTag         String? @default("Information")
+  videoUrl        String?
+  backgroundColor String? @default("#0f172a")
+  logoUrl         String?
+}
+
+model Product {
+  id                  String       @id @default(cuid())
+  slug                String       @unique
+  name                String
+  category            String
+  shortSpec           String?
+  description         String
+  isNew               Boolean      @default(false)
+  isFeatured          Boolean      @default(false)
+  heightClass         String       @default("h-[400px]")
+  imageUrl            String?
+  specs               String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  imagesJson          String?
+  premiumBenefitsJson String?
+  servicesJson        String?
+  servicesSubtitle    String?      @default("We take full ownership of your project from the ground up.")
+  servicesTitle       String?      @default("Premium Services")
+  whyInvestJson       String?
+  subCategoryId       String?
+  subCategory         SubCategory? @relation(fields: [subCategoryId], references: [id])
+  
+  // New Inner Page Customization Fields
+  ctaText             String?      @default("Get a Quote")
+  ctaLink             String?      @default("/quote")
+  brochureText        String?      @default("Download Brochure")
+  brochureLink        String?      @default("#")
+  warrantyText        String?      @default("10+ Year Warranty")
+  standardsText       String?      @default("FIFA/FIBA Standards")
+  specsTitle          String?      @default("DIMENSIONS & SPECS")
+  whyInvestTitle      String?      @default("WHY INVEST IN")
+}
+
+model Project {
+  id         String   @id @default(cuid())
+  name       String
+  city       String
+  state      String
+  surface    String
+  area       String
+  year       String
+  duration   String?  @default("45 Days to Handover")
+  standard   String?  @default("International Pro Grade")
+  imageUrl   String?
+  isFeatured Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Testimonial {
+  id          String  @id @default(cuid())
+  name        String
+  institution String
+  quote       String
+  avatar      String?
+  order       Int     @default(0)
+}
+
+model ContactRequest {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  city      String?
+  surface   String?
+  message   String
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+}
+
+model Otp {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  code      String
+  expiresAt DateTime
+}
+
+

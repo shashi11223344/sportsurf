@@ -31,7 +31,7 @@ export default async function Home() {
     // Enhance categories with dynamic product counts
     categories = await Promise.all((categoriesData || []).map(async (cat) => {
       const count = await prisma.product.count({
-        where: { category: { equals: cat.label, mode: 'insensitive' } }
+        where: { category: { contains: cat.label } }
       });
       return { ...cat, productCount: count };
     }));
@@ -47,7 +47,7 @@ export default async function Home() {
 
   return (
     <div className="pt-0     bg-ag-bg min-h-screen">
-      <Hero hero={hero} />
+      <Hero hero={hero} settings={settings} />
       <FeaturedProductsGrid categories={categories} />
       <StatsCounter settings={settings} />
       <FeaturedProjects projects={projects} />

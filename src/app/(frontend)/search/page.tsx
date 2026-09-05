@@ -15,9 +15,9 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
       prisma.product.findMany({
         where: {
           OR: [
-            { name: { contains: query, mode: "insensitive" } },
-            { description: { contains: query, mode: "insensitive" } },
-            { category: { contains: query, mode: "insensitive" } }
+            { name: { contains: query } },
+            { description: { contains: query } },
+            { category: { contains: query } }
           ]
         },
         take: 20
@@ -25,9 +25,9 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
       prisma.project.findMany({
         where: {
           OR: [
-            { name: { contains: query, mode: "insensitive" } },
-            { city: { contains: query, mode: "insensitive" } },
-            { surface: { contains: query, mode: "insensitive" } }
+            { name: { contains: query } },
+            { city: { contains: query } },
+            { surface: { contains: query } }
           ]
         },
         take: 10

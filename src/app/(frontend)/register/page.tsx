@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Mail, Lock, User, Phone, CheckCircle2, UserPlus, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
+import PageHeader from "@/components/ui/PageHeader";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -83,16 +84,28 @@ export default function RegisterPage() {
       <div className="container-retail">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-10">
-            <span className="text-ag-primary font-extrabold text-[11px] uppercase tracking-widest">New Partnerships</span>
-            <h1 className="font-heading font-extrabold text-4xl text-ag-text uppercase tracking-tight mt-2">
-              {step === 1 ? "Create an " : "Verify Your "}
-              <span className="text-ag-primary">{step === 1 ? "Account" : "Email"}</span>
-            </h1>
-            <p className="font-body text-ag-text-muted mt-4 text-sm">
-              {step === 1 
-                ? "Join India's most advanced sports infrastructure network."
-                : `We've sent a 6-digit verification code to ${email}`}
-            </p>
+            {step === 1 ? (
+              <PageHeader
+                page="registration"
+                defaultTag="New Partnerships"
+                defaultTitle={<>Create an <span className="text-ag-primary">Account</span></>}
+                defaultSubtitle="Join India's most advanced sports infrastructure network."
+                align="center"
+                titleClassName="font-heading font-extrabold text-4xl text-ag-text uppercase tracking-tight mt-2"
+                wrapperClassName=""
+                subtitleClassName="font-body text-ag-text-muted mt-4 text-sm"
+              />
+            ) : (
+              <>
+                <span className="text-ag-primary font-extrabold text-[11px] uppercase tracking-widest">New Partnerships</span>
+                <h1 className="font-heading font-extrabold text-4xl text-ag-text uppercase tracking-tight mt-2">
+                  Verify Your <span className="text-ag-primary">Email</span>
+                </h1>
+                <p className="font-body text-ag-text-muted mt-4 text-sm">
+                  {`We've sent a 6-digit verification code to ${email}`}
+                </p>
+              </>
+            )}
           </div>
 
           {error && (
