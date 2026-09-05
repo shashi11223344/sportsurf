@@ -129,7 +129,7 @@ function ProfilePageContent() {
                                 </div>
                                 <div className="flex items-center gap-8">
                                    <div className="text-right">
-                                      <span className={`text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter ${row.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-ag-primary/10 text-ag-primary'}`}>{row.status}</span>
+                                      <span className={`text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter ${row.status === 'pending' ? 'bg-amber-100 text-amber-700' : row.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>{row.status}</span>
                                       <p className="text-[9px] text-ag-text-muted font-bold mt-1 uppercase">{new Date(row.createdAt).toLocaleDateString()}</p>
                                    </div>
                                    <ChevronRight size={16} className="text-ag-text-muted" />
@@ -161,7 +161,7 @@ function ProfilePageContent() {
                                </div>
                                <div className="flex items-center gap-8">
                                   <div className="text-right">
-                                     <span className={`text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter ${request.status === 'pending' ? 'bg-amber-100 text-amber-700' : request.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-ag-primary/10 text-ag-primary'}`}>{request.status}</span>
+                                     <span className={`text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter ${request.status === 'pending' ? 'bg-amber-100 text-amber-700' : request.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>{request.status}</span>
                                      <p className="text-[9px] text-ag-text-muted font-bold mt-1 uppercase">{new Date(request.createdAt).toLocaleDateString()}</p>
                                   </div>
                                </div>

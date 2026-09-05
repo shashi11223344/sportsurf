@@ -45,7 +45,7 @@ interface ProductItem {
   whyInvestTitle?: string;
 }
 interface SubCategoryItem { id: string; name: string; categoryId: string; order: number; category?: { label: string } }
-interface ProjectItem { id: string; name: string; city: string; state: string; surface: string; area: string; year: string; duration?: string; standard?: string; imageUrl?: string }
+interface ProjectItem { id: string; name: string; city: string; state: string; surface: string; area: string; year: string; duration?: string; standard?: string; imageUrl?: string; deliverablesJson?: string }
 interface TestimonialItem { id: string; name: string; institution: string; quote: string; avatar?: string }
 interface CategoryItem {
   id: string;
@@ -777,6 +777,15 @@ export default function AdminDashboard() {
   }
 
   async function saveProject() {
+    if (formData.deliverablesJson) {
+      try {
+        JSON.parse(formData.deliverablesJson);
+      } catch (err: any) {
+        setFormErrors(prev => ({ ...prev, deliverablesJson: true }));
+        showToast(`JSON Error in "Deliverables": ${err?.message || "Invalid JSON formatting"}`, "error");
+        return;
+      }
+    }
     const isEdit = !!formData.id;
     const url = isEdit ? `/api/admin/projects/${formData.id}` : "/api/admin/projects";
     const method = isEdit ? "PUT" : "POST";
@@ -3687,6 +3696,17 @@ export default function AdminDashboard() {
               <Field label="Standard" name="standard" value={formData.standard || ""} onChange={handleFormChange} placeholder="International Pro Grade" />
             </div>
             <ImageUpload label="Project Showcase Image" value={formData.imageUrl || ""} onChange={(v) => setFormData(p => ({ ...p, imageUrl: v }))} />
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-1.5 px-1">Deliverables (JSON: Icon, Title — or plain strings)</label>
+              <textarea
+                name="deliverablesJson"
+                value={formData.deliverablesJson || "[]"}
+                onChange={handleFormChange}
+                className={`w-full bg-white border rounded-2xl px-4 py-3 text-xs font-mono h-32 focus:outline-none focus:ring-4 transition-all ${formErrors.deliverablesJson ? "border-red-500 focus:ring-red-500/20 focus:border-red-500 text-red-900 bg-red-50/30" : "border-slate-200 focus:ring-amber-500/10 focus:border-amber-400"}`}
+                placeholder='[{"icon": "Map", "title": "Site Survey & Grading"}, {"icon": "Layers", "title": "Sub-base Engineering"}]'
+              />
+              <p className="text-[9px] text-slate-400 font-bold mt-1 px-1 uppercase tracking-tighter">* Each item can be {"{\"icon\": \"IconName\", \"title\": \"...\"}"} or just a plain string. Leave empty to use default deliverables list.</p>
+            </div>
             <button onClick={saveProject} className="w-full bg-amber-500 hover:bg-amber-400 text-white py-3 rounded-xl font-bold transition flex items-center justify-center gap-2">
               <Save size={16} /> Save Project
             </button>

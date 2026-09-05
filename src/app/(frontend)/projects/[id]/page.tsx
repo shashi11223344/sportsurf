@@ -3,7 +3,26 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { MapPin, Calendar, LayoutGrid, CheckCircle2, ArrowLeft, Share2, ClipboardList } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
+
+// Lazy-loads lucide-react's full icon set only when a custom deliverable icon is needed,
+// instead of bundling all ~1300 icons into this page's initial client JS.
+const iconCache: Record<string, any> = {};
+function resolveIcon(name?: string) {
+  const key = name || "CheckCircle2";
+  if (!iconCache[key]) {
+    iconCache[key] = dynamic(() =>
+      import("lucide-react").then((mod) => (mod as any)[key] || mod.CheckCircle2)
+    );
+  }
+  return iconCache[key];
+}
+
+const DynamicIcon = ({ name, size = 20, className = "" }: { name?: string; size?: number; className?: string }) => {
+  const Icon = resolveIcon(name);
+  return <Icon size={size} className={className} />;
+};
 
 export default function ProjectDetailPage() {
   const { id } = useParams();
@@ -97,19 +116,31 @@ export default function ProjectDetailPage() {
             <div className="space-y-8">
               <h2 className="font-heading font-black text-3xl text-ag-text uppercase tracking-tight">Project <span className="text-ag-primary">Deliverables</span></h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {[
-                  "Site Survey & Grading",
-                  "Sub-base engineering",
-                  "Surface installation",
-                  "Line marking & Grooming",
-                  "Safety Certification",
-                  "Maintenance protocol handover"
-                ].map((item, i) => (
+                {(() => {
+                  let raw: any[] = [];
+                  try {
+                    raw = JSON.parse(project.deliverablesJson || "[]");
+                    if (raw.length === 0) throw new Error();
+                  } catch {
+                    raw = [
+                      "Site Survey & Grading",
+                      "Sub-base engineering",
+                      "Surface installation",
+                      "Line marking & Grooming",
+                      "Safety Certification",
+                      "Maintenance protocol handover"
+                    ];
+                  }
+                  // Supports both plain strings and { icon, title } objects
+                  return raw.map((entry) =>
+                    typeof entry === "string" ? { title: entry } : entry
+                  );
+                })().map((item, i) => (
                   <div key={i} className="flex gap-4 items-center p-5 bg-white border border-ag-border rounded-2xl">
                     <div className="w-10 h-10 rounded-xl bg-ag-primary/5 flex items-center justify-center text-ag-primary">
-                       <CheckCircle2 size={20} />
+                       <DynamicIcon name={item.icon} size={20} />
                     </div>
-                    <span className="text-sm font-bold text-ag-text-muted uppercase tracking-wide">{item}</span>
+                    <span className="text-sm font-bold text-ag-text-muted uppercase tracking-wide">{item.title}</span>
                   </div>
                 ))}
               </div>

@@ -24,10 +24,12 @@ export async function POST(req: Request) {
       return new NextResponse("Missing required fields", { status: 400 });
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     const request = await prisma.contactRequest.create({
       data: {
         name,
-        email,
+        email: normalizedEmail,
         phone: phone || null,
         city: city || null,
         surface: surface || null,

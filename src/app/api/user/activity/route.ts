@@ -15,7 +15,7 @@ export async function GET() {
   try {
     const activity = await prisma.contactRequest.findMany({
       where: {
-        email: session.user.email
+        email: { equals: session.user.email, mode: "insensitive" }
       },
       orderBy: {
         createdAt: "desc"

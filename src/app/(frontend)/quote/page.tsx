@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calculator, MapPin, Ruler, FileText, Send, CheckCircle2, Mail, Phone, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSession } from "next-auth/react";
 import PageHeader from "@/components/ui/PageHeader";
 
 export default function QuotePage() {
+  const { data: session } = useSession();
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -20,6 +22,17 @@ export default function QuotePage() {
     urgency: "Planning Phase (3+ Months)",
     message: ""
   });
+
+  // Pre-fill from the logged-in account so submitted quotes always link back to the profile
+  useEffect(() => {
+    if (session?.user) {
+      setFormData(prev => ({
+        ...prev,
+        name: prev.name || session.user?.name || "",
+        email: session.user?.email || prev.email,
+      }));
+    }
+  }, [session]);
 
   const PROJECT_CATEGORIES = [
     "Synthetic Football Turf",
@@ -225,15 +238,19 @@ Additional Details: ${formData.message}
                         </div>
                         <div className="space-y-2">
                           <label className="font-body font-bold text-ag-text text-[11px] uppercase tracking-widest ml-1">Work Email</label>
-                          <input 
+                          <input
                             required
                             name="email"
-                            type="email" 
+                            type="email"
                             value={formData.email}
                             onChange={handleChange}
-                            placeholder="rahul@biz.com" 
-                            className="w-full bg-ag-bg-alt border border-ag-border rounded-lg py-4 px-6 text-ag-text font-body text-sm focus:outline-none focus:ring-2 focus:ring-ag-primary/10" 
+                            readOnly={!!session?.user?.email}
+                            placeholder="rahul@biz.com"
+                            className={`w-full border border-ag-border rounded-lg py-4 px-6 text-ag-text font-body text-sm focus:outline-none focus:ring-2 focus:ring-ag-primary/10 ${session?.user?.email ? "bg-ag-bg-alt/60 cursor-not-allowed" : "bg-ag-bg-alt"}`}
                           />
+                          {session?.user?.email && (
+                            <p className="text-[10px] text-ag-text-muted font-medium ml-1">Locked to your account email so this quote appears in your profile.</p>
+                          )}
                         </div>
                       </div>
                     </div>
